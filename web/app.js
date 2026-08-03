@@ -134,11 +134,39 @@ function SymbolDetail({ symbol, onClose }) {
   `;
 }
 
+function Top10Panel({ rows, sortKey, onSelect }) {
+  if (rows.length === 0) return null;
+  const label = sortKey === "week_drawdown_pct" ? "cette semaine" : "ce mois-ci";
+  return html`
+    <div class="mb-4">
+      <h2 class="text-sm font-semibold text-slate-600 mb-2">Top 10 des plus fortes baisses — ${label}</h2>
+      <div class="flex gap-2 overflow-x-auto pb-1">
+        ${rows.map(
+          (r, i) => html`
+            <button
+              class="flex-shrink-0 w-36 text-left border border-slate-200 rounded-lg p-2.5 bg-white hover:border-slate-300"
+              onClick=${() => onSelect(r.symbol)}
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-400">#${i + 1}</span>
+                <span class="font-semibold text-sm text-slate-900">${r.symbol}</span>
+              </div>
+              <div class="text-red-600 font-medium text-sm mt-1">${formatPct(r[sortKey])}</div>
+              <div class="text-xs text-slate-500 truncate">${r.name}</div>
+            </button>
+          `
+        )}
+      </div>
+    </div>
+  `;
+}
+
 function App() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sector, setSector] = useState(SECTORS_ALL);
+  const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("week_drawdown_pct");
   const [selected, setSelected] = useState(null);
 
@@ -188,8 +216,19 @@ function App() {
     if (sector !== SECTORS_ALL) {
       out = out.filter((r) => r.sector === sector);
     }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      out = out.filter((r) => r.symbol.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
+    }
     return [...out].sort((a, b) => (a[sortKey] ?? 0) - (b[sortKey] ?? 0));
-  }, [rows, sector, sortKey]);
+  }, [rows, sector, search, sortKey]);
+
+  // Le top 10 reste indépendant des filtres secteur/recherche : c'est une
+  // vue d'ensemble rapide, le tableau en dessous sert à creuser un sous-ensemble.
+  const top10 = useMemo(
+    () => [...rows].sort((a, b) => (a[sortKey] ?? 0) - (b[sortKey] ?? 0)).slice(0, 10),
+    [rows, sortKey]
+  );
 
   const latestUpdate = useMemo(
     () => rows.reduce((max, r) => (r.updated_at && (!max || r.updated_at > max) ? r.updated_at : max), null),
@@ -222,7 +261,16 @@ function App() {
         </div>
       </header>
 
+      <${Top10Panel} rows=${top10} sortKey=${sortKey} onSelect=${setSelected} />
+
       <div class="flex flex-wrap items-center gap-3 mb-3 text-sm">
+        <input
+          type="search"
+          placeholder="Rechercher un symbole ou un nom…"
+          class="border border-slate-300 rounded-md px-2 py-1.5 flex-1 min-w-[200px]"
+          value=${search}
+          onInput=${(e) => setSearch(e.target.value)}
+        />
         <select
           class="border border-slate-300 rounded-md px-2 py-1.5"
           value=${sector}
@@ -279,7 +327,9 @@ function App() {
             </tbody>
           </table>
           ${visibleRows.length === 0 &&
-          html`<div class="p-6 text-center text-sm text-slate-400">Aucune donnée pour l'instant.</div>`}
+          html`<div class="p-6 text-center text-sm text-slate-400">
+            ${rows.length === 0 ? "Aucune donnée pour l'instant." : "Aucun résultat pour ce filtre."}
+          </div>`}
         </div>
       `}
       ${selected && html`<${SymbolDetail} symbol=${selected} onClose=${() => setSelected(null)} />`}
