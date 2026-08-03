@@ -1,0 +1,18 @@
+# Python (ingestion)
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Secrets locaux (jamais commit)
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
