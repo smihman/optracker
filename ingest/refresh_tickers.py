@@ -13,6 +13,7 @@ ingestion, otherwise ingest.py has nothing to fetch.
 
 from __future__ import annotations
 
+import io
 import logging
 import sys
 
@@ -43,7 +44,11 @@ SYMBOL_OVERRIDES = {
 def fetch_current_constituents() -> list[dict]:
     resp = requests.get(WIKI_URL, headers={"User-Agent": USER_AGENT}, timeout=30)
     resp.raise_for_status()
-    tables = pd.read_html(resp.text)
+    # Wrap in StringIO: passing the raw string directly makes pandas run
+    # os.path.isfile() on it to check whether it's a path, which raises
+    # "OSError: File name too long" on a full HTML page instead of being
+    # treated as literal markup.
+    tables = pd.read_html(io.StringIO(resp.text))
     df = tables[0]
     out = []
     for _, row in df.iterrows():
