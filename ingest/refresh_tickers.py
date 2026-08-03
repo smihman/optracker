@@ -17,6 +17,7 @@ import logging
 import sys
 
 import pandas as pd
+import requests
 
 from supabase_client import get_client
 
@@ -24,6 +25,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("refresh_tickers")
 
 WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+# Wikipedia returns 403 for the default urllib/requests user agent used by
+# pandas.read_html — fetch the page ourselves with a browser-like UA first.
+USER_AGENT = (
+    "Mozilla/5.0 (compatible; sp500-drawdown-dashboard/1.0; "
+    "personal research tool, not a bot farm)"
+)
 
 # Yahoo Finance uses '-' where the official ticker uses '.', e.g. BRK.B -> BRK-B.
 # Add to this map if another symbol turns out to need a specific override.
@@ -34,7 +41,9 @@ SYMBOL_OVERRIDES = {
 
 
 def fetch_current_constituents() -> list[dict]:
-    tables = pd.read_html(WIKI_URL)
+    resp = requests.get(WIKI_URL, headers={"User-Agent": USER_AGENT}, timeout=30)
+    resp.raise_for_status()
+    tables = pd.read_html(resp.text)
     df = tables[0]
     out = []
     for _, row in df.iterrows():
