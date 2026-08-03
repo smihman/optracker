@@ -311,16 +311,17 @@ function App() {
         >
           ${sectors.map((s) => html`<option value=${s}>${s}</option>`)}
         </select>
+        <span class="text-slate-400">Top 10 :</span>
         <div class="flex rounded-md border border-slate-300 overflow-hidden">
           <button
-            class=${"px-3 py-1.5 " + (sortKey === "week_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
-            onClick=${() => setSortKey("week_drawdown_pct")}
+            class=${"px-3 py-1.5 " + (top10Metric === "week_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
+            onClick=${() => setTop10Metric("week_drawdown_pct")}
           >
             Semaine
           </button>
           <button
-            class=${"px-3 py-1.5 " + (sortKey === "month_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
-            onClick=${() => setSortKey("month_drawdown_pct")}
+            class=${"px-3 py-1.5 " + (top10Metric === "month_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
+            onClick=${() => setTop10Metric("month_drawdown_pct")}
           >
             Mois
           </button>
@@ -336,12 +337,12 @@ function App() {
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
               <tr>
-                <th class="px-3 py-2 text-left">Symbole</th>
-                <th class="px-3 py-2 text-left">Nom</th>
-                <th class="px-3 py-2 text-left">Secteur</th>
-                <th class="px-3 py-2 text-right">Dernier</th>
-                <th class="px-3 py-2 text-right">% Semaine</th>
-                <th class="px-3 py-2 text-right">% Mois</th>
+                <${SortableTh} label="Symbole" sortKey="symbol" tableSort=${tableSort} onSort=${toggleSort} />
+                <${SortableTh} label="Nom" sortKey="name" tableSort=${tableSort} onSort=${toggleSort} />
+                <${SortableTh} label="Secteur" sortKey="sector" tableSort=${tableSort} onSort=${toggleSort} />
+                <${SortableTh} label="Dernier" sortKey="last_price" align="right" tableSort=${tableSort} onSort=${toggleSort} />
+                <${SortableTh} label="% Semaine" sortKey="week_drawdown_pct" align="right" tableSort=${tableSort} onSort=${toggleSort} />
+                <${SortableTh} label="% Mois" sortKey="month_drawdown_pct" align="right" tableSort=${tableSort} onSort=${toggleSort} />
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
