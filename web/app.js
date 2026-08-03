@@ -41,6 +41,33 @@ function isFresh(updatedAt) {
   return Date.now() - new Date(updatedAt).getTime() < FRESHNESS_MARGIN_MS;
 }
 
+// null/undefined toujours en dernier, quel que soit le sens du tri.
+function compareRows(a, b, key, dir) {
+  const av = a[key];
+  const bv = b[key];
+  let cmp;
+  if (av === null || av === undefined) cmp = bv === null || bv === undefined ? 0 : 1;
+  else if (bv === null || bv === undefined) cmp = -1;
+  else if (typeof av === "string") cmp = av.localeCompare(bv);
+  else cmp = av - bv;
+  return dir === "asc" ? cmp : -cmp;
+}
+
+function SortableTh({ label, sortKey, align, tableSort, onSort }) {
+  const active = tableSort.key === sortKey;
+  const arrow = active ? (tableSort.dir === "asc" ? " ▲" : " ▼") : "";
+  return html`
+    <th
+      class=${"px-3 py-2 cursor-pointer select-none hover:text-slate-700 " +
+      (align === "right" ? "text-right" : "text-left") +
+      (active ? " text-slate-700" : "")}
+      onClick=${() => onSort(sortKey)}
+    >
+      ${label}${arrow}
+    </th>
+  `;
+}
+
 function DrawdownCell({ value }) {
   if (value === null || value === undefined) {
     return html`<td class="px-3 py-2 text-right text-slate-400">—</td>`;
@@ -134,9 +161,9 @@ function SymbolDetail({ symbol, onClose }) {
   `;
 }
 
-function Top10Panel({ rows, sortKey, onSelect }) {
+function Top10Panel({ rows, metric, onSelect }) {
   if (rows.length === 0) return null;
-  const label = sortKey === "week_drawdown_pct" ? "cette semaine" : "ce mois-ci";
+  const label = metric === "week_drawdown_pct" ? "cette semaine" : "ce mois-ci";
   return html`
     <div class="mb-4">
       <h2 class="text-sm font-semibold text-slate-600 mb-2">Top 10 des plus fortes baisses — ${label}</h2>
@@ -151,7 +178,7 @@ function Top10Panel({ rows, sortKey, onSelect }) {
                 <span class="text-xs text-slate-400">#${i + 1}</span>
                 <span class="font-semibold text-sm text-slate-900">${r.symbol}</span>
               </div>
-              <div class="text-red-600 font-medium text-sm mt-1">${formatPct(r[sortKey])}</div>
+              <div class="text-red-600 font-medium text-sm mt-1">${formatPct(r[metric])}</div>
               <div class="text-xs text-slate-500 truncate">${r.name}</div>
             </button>
           `
@@ -167,8 +194,13 @@ function App() {
   const [error, setError] = useState(null);
   const [sector, setSector] = useState(SECTORS_ALL);
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState("week_drawdown_pct");
+  const [top10Metric, setTop10Metric] = useState("week_drawdown_pct");
+  const [tableSort, setTableSort] = useState({ key: "week_drawdown_pct", dir: "asc" });
   const [selected, setSelected] = useState(null);
+
+  function toggleSort(key) {
+    setTableSort((prev) => (prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
 
   async function load() {
     setLoading(true);
@@ -220,14 +252,15 @@ function App() {
     if (q) {
       out = out.filter((r) => r.symbol.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
     }
-    return [...out].sort((a, b) => (a[sortKey] ?? 0) - (b[sortKey] ?? 0));
-  }, [rows, sector, search, sortKey]);
+    return [...out].sort((a, b) => compareRows(a, b, tableSort.key, tableSort.dir));
+  }, [rows, sector, search, tableSort]);
 
-  // Le top 10 reste indépendant des filtres secteur/recherche : c'est une
-  // vue d'ensemble rapide, le tableau en dessous sert à creuser un sous-ensemble.
+  // Le top 10 reste indépendant des filtres secteur/recherche/tri du tableau :
+  // c'est une vue d'ensemble rapide, le tableau en dessous sert à creuser un
+  // sous-ensemble ou à trier par une autre colonne.
   const top10 = useMemo(
-    () => [...rows].sort((a, b) => (a[sortKey] ?? 0) - (b[sortKey] ?? 0)).slice(0, 10),
-    [rows, sortKey]
+    () => [...rows].sort((a, b) => (a[top10Metric] ?? 0) - (b[top10Metric] ?? 0)).slice(0, 10),
+    [rows, top10Metric]
   );
 
   const latestUpdate = useMemo(
@@ -261,7 +294,7 @@ function App() {
         </div>
       </header>
 
-      <${Top10Panel} rows=${top10} sortKey=${sortKey} onSelect=${setSelected} />
+      <${Top10Panel} rows=${top10} metric=${top10Metric} onSelect=${setSelected} />
 
       <div class="flex flex-wrap items-center gap-3 mb-3 text-sm">
         <input
