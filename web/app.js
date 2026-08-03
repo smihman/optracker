@@ -53,14 +53,15 @@ function compareRows(a, b, key, dir) {
   return dir === "asc" ? cmp : -cmp;
 }
 
-function SortableTh({ label, sortKey, align, tableSort, onSort }) {
+function SortableTh({ label, sortKey, align, tableSort, onSort, hideOnMobile }) {
   const active = tableSort.key === sortKey;
   const arrow = active ? (tableSort.dir === "asc" ? " ▲" : " ▼") : "";
   return html`
     <th
-      class=${"px-3 py-2 cursor-pointer select-none hover:text-slate-700 " +
+      class=${"px-2 sm:px-3 py-2 cursor-pointer select-none whitespace-nowrap hover:text-slate-700 " +
       (align === "right" ? "text-right" : "text-left") +
-      (active ? " text-slate-700" : "")}
+      (active ? " text-slate-700" : "") +
+      (hideOnMobile ? " hidden sm:table-cell" : "")}
       onClick=${() => onSort(sortKey)}
     >
       ${label}${arrow}
@@ -70,10 +71,10 @@ function SortableTh({ label, sortKey, align, tableSort, onSort }) {
 
 function DrawdownCell({ value }) {
   if (value === null || value === undefined) {
-    return html`<td class="px-3 py-2 text-right text-slate-400">—</td>`;
+    return html`<td class="px-2 sm:px-3 py-2 text-right text-slate-400">—</td>`;
   }
   const color = value < 0 ? "text-red-600" : value > 0 ? "text-emerald-600" : "text-slate-500";
-  return html`<td class="px-3 py-2 text-right font-medium ${color}">${formatPct(value)}</td>`;
+  return html`<td class="px-2 sm:px-3 py-2 text-right font-medium whitespace-nowrap ${color}">${formatPct(value)}</td>`;
 }
 
 function SymbolDetail({ symbol, onClose }) {
@@ -131,9 +132,11 @@ function SymbolDetail({ symbol, onClose }) {
       },
       options: {
         animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { maxTicksLimit: 6, autoSkip: true } },
+          x: { ticks: { maxTicksLimit: 5, autoSkip: true } },
           y: { ticks: { callback: (v) => `$${v}` } },
         },
       },
@@ -142,20 +145,22 @@ function SymbolDetail({ symbol, onClose }) {
   }, [points]);
 
   return html`
-    <div class="fixed inset-0 bg-black/30 flex items-center justify-center p-4" onClick=${onClose}>
+    <div class="fixed inset-0 bg-black/30 flex items-center justify-center p-3 sm:p-4" onClick=${onClose}>
       <div
-        class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-4"
+        class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-3 sm:p-4 max-h-[90vh] overflow-y-auto"
         onClick=${(e) => e.stopPropagation()}
       >
         <div class="flex items-center justify-between mb-3">
           <h2 class="font-semibold text-slate-900">${symbol} — 7 derniers jours</h2>
-          <button class="text-slate-400 hover:text-slate-600" onClick=${onClose}>✕</button>
+          <button class="text-slate-400 hover:text-slate-600 text-lg leading-none px-1" onClick=${onClose}>✕</button>
         </div>
         ${loading && html`<div class="text-sm text-slate-400">Chargement…</div>`}
         ${!loading &&
         points.length === 0 &&
         html`<div class="text-sm text-slate-400">Pas de données récentes.</div>`}
-        ${!loading && points.length > 0 && html`<canvas ref=${canvasRef} height="120"></canvas>`}
+        ${!loading &&
+        points.length > 0 &&
+        html`<div class="relative h-56 sm:h-64"><canvas ref=${canvasRef}></canvas></div>`}
       </div>
     </div>
   `;
@@ -167,11 +172,11 @@ function Top10Panel({ rows, metric, onSelect }) {
   return html`
     <div class="mb-4">
       <h2 class="text-sm font-semibold text-slate-600 mb-2">Top 10 des plus fortes baisses — ${label}</h2>
-      <div class="flex gap-2 overflow-x-auto pb-1">
+      <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
         ${rows.map(
           (r, i) => html`
             <button
-              class="flex-shrink-0 w-36 text-left border border-slate-200 rounded-lg p-2.5 bg-white hover:border-slate-300"
+              class="flex-shrink-0 w-32 sm:w-36 text-left border border-slate-200 rounded-lg p-2.5 bg-white hover:border-slate-300"
               onClick=${() => onSelect(r.symbol)}
             >
               <div class="flex items-center justify-between">
@@ -272,23 +277,26 @@ function App() {
 
   return html`
     <div class="max-w-6xl mx-auto p-4">
-      <header class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <h1 class="text-xl font-semibold text-slate-900">S&P 500 — Décotes</h1>
           <p class="text-sm text-slate-500">
             Outil de recherche personnel. Données factuelles, pas une recommandation d'achat.
           </p>
         </div>
-        <div class="flex items-center gap-3 text-sm">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
           <span
-            class=${"inline-flex items-center gap-1.5 px-2 py-1 rounded-full " +
+            class=${"inline-flex items-center gap-1.5 px-2 py-1 rounded-full whitespace-nowrap " +
             (marketOpen ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500")}
           >
-            <span class=${"w-1.5 h-1.5 rounded-full " + (marketOpen ? "bg-emerald-500" : "bg-slate-400")}></span>
+            <span class=${"w-1.5 h-1.5 rounded-full flex-shrink-0 " + (marketOpen ? "bg-emerald-500" : "bg-slate-400")}></span>
             ${marketOpen ? "Marché ouvert" : "Marché fermé / données figées"}
           </span>
-          <span class="text-slate-400">MAJ ${formatDateTime(latestUpdate)}</span>
-          <button class="px-3 py-1.5 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50" onClick=${load}>
+          <span class="text-slate-400 whitespace-nowrap">MAJ ${formatDateTime(latestUpdate)}</span>
+          <button
+            class="px-3 py-1.5 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+            onClick=${load}
+          >
             Rafraîchir
           </button>
         </div>
@@ -296,35 +304,37 @@ function App() {
 
       <${Top10Panel} rows=${top10} metric=${top10Metric} onSelect=${setSelected} />
 
-      <div class="flex flex-wrap items-center gap-3 mb-3 text-sm">
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 text-sm">
         <input
           type="search"
           placeholder="Rechercher un symbole ou un nom…"
-          class="border border-slate-300 rounded-md px-2 py-1.5 flex-1 min-w-[200px]"
+          class="border border-slate-300 rounded-md px-2 py-1.5 w-full sm:w-auto sm:flex-1 sm:min-w-[200px]"
           value=${search}
           onInput=${(e) => setSearch(e.target.value)}
         />
         <select
-          class="border border-slate-300 rounded-md px-2 py-1.5"
+          class="border border-slate-300 rounded-md px-2 py-1.5 flex-1 sm:flex-none"
           value=${sector}
           onChange=${(e) => setSector(e.target.value)}
         >
           ${sectors.map((s) => html`<option value=${s}>${s}</option>`)}
         </select>
-        <span class="text-slate-400">Top 10 :</span>
-        <div class="flex rounded-md border border-slate-300 overflow-hidden">
-          <button
-            class=${"px-3 py-1.5 " + (top10Metric === "week_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
-            onClick=${() => setTop10Metric("week_drawdown_pct")}
-          >
-            Semaine
-          </button>
-          <button
-            class=${"px-3 py-1.5 " + (top10Metric === "month_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
-            onClick=${() => setTop10Metric("month_drawdown_pct")}
-          >
-            Mois
-          </button>
+        <div class="flex items-center gap-2 ml-auto sm:ml-0">
+          <span class="text-slate-400 hidden sm:inline">Top 10 :</span>
+          <div class="flex rounded-md border border-slate-300 overflow-hidden">
+            <button
+              class=${"px-3 py-1.5 " + (top10Metric === "week_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
+              onClick=${() => setTop10Metric("week_drawdown_pct")}
+            >
+              Semaine
+            </button>
+            <button
+              class=${"px-3 py-1.5 " + (top10Metric === "month_drawdown_pct" ? "bg-slate-900 text-white" : "bg-white text-slate-700")}
+              onClick=${() => setTop10Metric("month_drawdown_pct")}
+            >
+              Mois
+            </button>
+          </div>
         </div>
       </div>
 
@@ -339,7 +349,7 @@ function App() {
               <tr>
                 <${SortableTh} label="Symbole" sortKey="symbol" tableSort=${tableSort} onSort=${toggleSort} />
                 <${SortableTh} label="Nom" sortKey="name" tableSort=${tableSort} onSort=${toggleSort} />
-                <${SortableTh} label="Secteur" sortKey="sector" tableSort=${tableSort} onSort=${toggleSort} />
+                <${SortableTh} label="Secteur" sortKey="sector" hideOnMobile tableSort=${tableSort} onSort=${toggleSort} />
                 <${SortableTh} label="Dernier" sortKey="last_price" align="right" tableSort=${tableSort} onSort=${toggleSort} />
                 <${SortableTh} label="% Semaine" sortKey="week_drawdown_pct" align="right" tableSort=${tableSort} onSort=${toggleSort} />
                 <${SortableTh} label="% Mois" sortKey="month_drawdown_pct" align="right" tableSort=${tableSort} onSort=${toggleSort} />
@@ -349,10 +359,10 @@ function App() {
               ${visibleRows.map(
                 (r) => html`
                   <tr class="hover:bg-slate-50 cursor-pointer" onClick=${() => setSelected(r.symbol)}>
-                    <td class="px-3 py-2 font-medium text-slate-900">${r.symbol}</td>
-                    <td class="px-3 py-2 text-slate-600">${r.name}</td>
-                    <td class="px-3 py-2 text-slate-500">${r.sector}</td>
-                    <td class="px-3 py-2 text-right text-slate-700">${formatPrice(r.last_price)}</td>
+                    <td class="px-2 sm:px-3 py-2 font-medium text-slate-900 whitespace-nowrap">${r.symbol}</td>
+                    <td class="px-2 sm:px-3 py-2 text-slate-600 max-w-[110px] sm:max-w-none truncate">${r.name}</td>
+                    <td class="px-2 sm:px-3 py-2 text-slate-500 hidden sm:table-cell">${r.sector}</td>
+                    <td class="px-2 sm:px-3 py-2 text-right text-slate-700 whitespace-nowrap">${formatPrice(r.last_price)}</td>
                     <${DrawdownCell} value=${r.week_drawdown_pct} />
                     <${DrawdownCell} value=${r.month_drawdown_pct} />
                   </tr>

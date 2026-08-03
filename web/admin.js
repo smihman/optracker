@@ -33,7 +33,7 @@ function LoginForm({ onLoggedIn }) {
   }
 
   return html`
-    <form class="max-w-sm mx-auto mt-24 p-6 border border-slate-200 rounded-lg bg-white" onSubmit=${submit}>
+    <form class="max-w-sm mx-auto mt-12 sm:mt-24 p-5 sm:p-6 border border-slate-200 rounded-lg bg-white" onSubmit=${submit}>
       <h1 class="text-lg font-semibold mb-4">Administration</h1>
       <label class="block text-sm text-slate-600 mb-1">Email</label>
       <input
@@ -95,7 +95,7 @@ function PurgePanel({ onPurged }) {
         Une purge automatique (90 jours) tourne déjà à chaque ingestion. Utile pour purger plus
         agressivement si le quota Supabase approche.
       </p>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <label class="text-sm text-slate-600">Conserver les</label>
         <input
           type="number"
@@ -106,7 +106,7 @@ function PurgePanel({ onPurged }) {
         />
         <label class="text-sm text-slate-600">derniers jours</label>
         <button
-          class="ml-auto px-3 py-1.5 rounded-md bg-red-600 text-white disabled:opacity-50"
+          class="w-full sm:w-auto sm:ml-auto px-3 py-1.5 rounded-md bg-red-600 text-white disabled:opacity-50"
           disabled=${busy}
           onClick=${purge}
         >
@@ -128,7 +128,7 @@ function TickersPanel({ tickers, onToggle }) {
 
   return html`
     <div class="border border-slate-200 rounded-lg p-4 bg-white">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <h2 class="font-semibold">Tickers (${tickers.length})</h2>
         <input
           class="border border-slate-300 rounded-md px-2 py-1 text-sm"
@@ -137,13 +137,13 @@ function TickersPanel({ tickers, onToggle }) {
           onInput=${(e) => setFilter(e.target.value)}
         />
       </div>
-      <div class="max-h-80 overflow-y-auto text-sm">
+      <div class="max-h-80 overflow-y-auto overflow-x-auto text-sm">
         <table class="w-full">
           <thead class="text-xs uppercase text-slate-500 sticky top-0 bg-white">
             <tr>
-              <th class="text-left py-1">Symbole</th>
-              <th class="text-left py-1">Nom</th>
-              <th class="text-left py-1">Actif</th>
+              <th class="text-left py-1 pr-2">Symbole</th>
+              <th class="text-left py-1 pr-2">Nom</th>
+              <th class="text-left py-1 pr-2">Actif</th>
               <th></th>
             </tr>
           </thead>
@@ -151,12 +151,12 @@ function TickersPanel({ tickers, onToggle }) {
             ${visible.map(
               (t) => html`
                 <tr>
-                  <td class="py-1 font-medium">${t.symbol}</td>
-                  <td class="py-1 text-slate-600">${t.name}</td>
-                  <td class="py-1">${t.is_active ? "Oui" : "Non"}</td>
+                  <td class="py-1 pr-2 font-medium whitespace-nowrap">${t.symbol}</td>
+                  <td class="py-1 pr-2 text-slate-600 max-w-[140px] sm:max-w-none truncate">${t.name}</td>
+                  <td class="py-1 pr-2">${t.is_active ? "Oui" : "Non"}</td>
                   <td class="py-1 text-right">
                     <button
-                      class="text-xs underline text-slate-500 hover:text-slate-800"
+                      class="text-xs underline text-slate-500 hover:text-slate-800 whitespace-nowrap"
                       onClick=${() => onToggle(t.symbol, !t.is_active)}
                     >
                       ${t.is_active ? "Désactiver" : "Activer"}
@@ -232,14 +232,14 @@ function AdminApp() {
 
   return html`
     <div class="max-w-3xl mx-auto p-4">
-      <header class="flex items-center justify-between mb-6">
+      <header class="flex flex-wrap items-center justify-between gap-2 mb-6">
         <h1 class="text-xl font-semibold">Administration</h1>
         <div class="flex items-center gap-3 text-sm">
           <a href="./index.html" class="underline text-slate-500 hover:text-slate-800">← Dashboard</a>
           <button class="text-slate-500 hover:text-slate-800" onClick=${logout}>Déconnexion</button>
         </div>
       </header>
-      <div class="grid grid-cols-3 gap-3 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <${StatCard} label="Tickers actifs" value=${stats.activeTickers} />
         <${StatCard} label="Lignes de prix" value=${stats.priceRows} />
         <${StatCard} label="Plus ancien point" value=${stats.oldestTs} />
