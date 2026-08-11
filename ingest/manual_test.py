@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from market_calendar import today_session
+from market_calendar import is_trading_day, today_et
 from price_provider import YahooFinanceProvider
 
 logging.basicConfig(level=logging.INFO)
@@ -21,14 +21,13 @@ SYMBOLS = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"]
 
 def main() -> None:
     now = datetime.now(timezone.utc)
-    session = today_session(now)
-    print(f"session today: {session}")
+    print(f"today (ET): {today_et(now)}, trading day: {is_trading_day(now)}")
 
     provider = YahooFinanceProvider()
-    points = provider.fetch_intraday(SYMBOLS)
-    print(f"got {len(points)} points for {len(SYMBOLS)} symbols")
-    for p in points[:5]:
-        print(p)
+    closes = provider.fetch_daily_closes(SYMBOLS, period="5d")
+    print(f"got {len(closes)} rows for {len(SYMBOLS)} symbols")
+    for c in closes[:10]:
+        print(c)
 
 
 if __name__ == "__main__":

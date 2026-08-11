@@ -1,16 +1,23 @@
-"""Main ingestion entrypoint, run every 30 minutes by GitHub Actions
-during a wide UTC window covering both EST and EDT. Idempotent: safe to
-re-run, safe to run outside actual session hours (it just exits early
-once it checks the real NYSE calendar).
+"""Main ingestion entrypoint, run once a day by GitHub Actions shortly
+after the NYSE close. Idempotent: safe to re-run, safe to run on a
+closed day (exits early after checking the real NYSE calendar).
+
+Fetches a small trailing window (default 5 days) rather than just
+today's close: if a cron run is skipped or fails, the next successful
+run automatically backfills the gap via upsert. Pass --period 1y once
+for the initial historical backfill (see README) — an explicit period
+override always runs regardless of what day it is, so the backfill
+can be triggered manually on a weekend.
 """
 
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-from market_calendar import today_session
+from market_calendar import is_trading_day, today_et
 from metrics import recompute_metrics
 from price_provider import YahooFinanceProvider
 from supabase_client import get_client
@@ -18,7 +25,7 @@ from supabase_client import get_client
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("ingest")
 
-PRICE_RETENTION_DAYS = 90
+DEFAULT_PERIOD = "5d"
 UPSERT_BATCH_SIZE = 500
 
 
@@ -27,38 +34,37 @@ def load_active_symbols(client) -> list[str]:
     return [row["symbol"] for row in resp.data]
 
 
-def upsert_prices(client, points) -> None:
+def upsert_daily_closes(client, closes) -> None:
     rows = [
         {
-            "symbol": p.symbol,
-            "ts": p.ts.isoformat(),
-            "price": p.price,
-            "volume": p.volume,
+            "symbol": c.symbol,
+            "date": c.date.isoformat(),
+            "close": c.close,
+            "volume": c.volume,
         }
-        for p in points
+        for c in closes
     ]
     for i in range(0, len(rows), UPSERT_BATCH_SIZE):
         batch = rows[i : i + UPSERT_BATCH_SIZE]
-        client.table("prices").upsert(batch, on_conflict="symbol,ts").execute()
-
-
-def purge_old_prices(client, now_utc: datetime, retention_days: int = PRICE_RETENTION_DAYS) -> None:
-    cutoff = (now_utc - timedelta(days=retention_days)).isoformat()
-    client.table("prices").delete().lt("ts", cutoff).execute()
+        client.table("daily_closes").upsert(batch, on_conflict="symbol,date").execute()
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--period",
+        default=DEFAULT_PERIOD,
+        help='yfinance period to fetch (default "5d" for the routine daily run; use "1y" once for the initial backfill)',
+    )
+    args = parser.parse_args()
+
     now_utc = datetime.now(timezone.utc)
 
-    session = today_session(now_utc)
-    if session is None:
-        logger.info("market closed today (weekend/holiday), exiting")
-        return 0
-    if not (session.open <= now_utc <= session.close):
-        logger.info(
-            "outside regular session (open=%s close=%s now=%s), exiting",
-            session.open, session.close, now_utc,
-        )
+    # Only gate on "is today a trading day" for the routine run. An
+    # explicit --period override (backfill) should run regardless of
+    # what day it's launched on.
+    if args.period == DEFAULT_PERIOD and not is_trading_day(now_utc):
+        logger.info("not a trading day, exiting")
         return 0
 
     client = get_client()
@@ -70,35 +76,27 @@ def main() -> int:
     logger.info("loaded %d active tickers", len(symbols))
 
     provider = YahooFinanceProvider()
-    points = provider.fetch_intraday(symbols)
+    closes = provider.fetch_daily_closes(symbols, period=args.period)
+    logger.info("fetched %d daily close rows (period=%s)", len(closes), args.period)
 
-    in_session = [p for p in points if session.open <= p.ts <= session.close]
-    logger.info("fetched %d raw points, %d within session window", len(points), len(in_session))
-
-    seen_symbols = {p.symbol for p in in_session}
+    seen_symbols = {c.symbol for c in closes}
     missing = sorted(set(symbols) - seen_symbols)
     if missing:
         logger.warning(
-            "no in-session data for %d/%d symbols: %s", len(missing), len(symbols), ", ".join(missing)
+            "no data for %d/%d symbols: %s", len(missing), len(symbols), ", ".join(missing)
         )
 
-    if not in_session:
-        logger.warning("no in-session points to upsert, skipping metrics recompute")
+    if not closes:
+        logger.warning("no closes to upsert, skipping metrics recompute")
         return 0
 
-    upsert_prices(client, in_session)
-    logger.info("upserted %d price points", len(in_session))
+    upsert_daily_closes(client, closes)
+    logger.info("upserted %d daily close rows", len(closes))
 
-    recompute_metrics(client, now_utc)
+    recompute_metrics(client, today_et(now_utc))
     logger.info("metrics recomputed")
 
-    purge_old_prices(client, now_utc)
-    logger.info("purged prices older than %d days", PRICE_RETENTION_DAYS)
-
-    logger.info(
-        "run summary: %d/%d symbols ok, session=%s..%s",
-        len(seen_symbols), len(symbols), session.open, session.close,
-    )
+    logger.info("run summary: %d/%d symbols ok", len(seen_symbols), len(symbols))
     return 0
 
 

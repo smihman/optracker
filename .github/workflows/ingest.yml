@@ -1,18 +1,21 @@
-name: Ingest prices
+name: Ingest daily closes
 
 on:
   schedule:
-    # Toutes les 30 min, 13:00-21:30 UTC, lun-ven — couvre la séance
-    # NYSE (9:30-16:00 ET) en heure d'été (EDT) et d'hiver (EST). Le
-    # script vérifie la session réelle du jour via exchange-calendars
-    # et sort proprement en dehors de la séance.
-    - cron: "0,30 13-21 * * 1-5"
-  workflow_dispatch: {}
+    # Une fois par jour, 21:30 UTC — toujours après la clôture NYSE
+    # (16:00 ET), que ce soit en EDT (20:00 UTC) ou en EST (21:00 UTC).
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'Fenêtre yfinance à récupérer ("5d" en routine, "1y" pour le backfill initial)'
+        required: false
+        default: "5d"
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -28,4 +31,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python ingest.py
+        run: python ingest.py --period "${{ github.event.inputs.period || '5d' }}"

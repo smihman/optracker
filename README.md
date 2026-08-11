@@ -1,8 +1,9 @@
 # S&P 500 Drawdown Dashboard
 
-Outil de recherche personnel qui surveille les cours des actions du S&P 500 toutes les 30 minutes
-pendant les heures de marché, stocke l'historique, et affiche un dashboard classant les actions
-qui ont le plus baissé sur la semaine et sur le mois en cours.
+Outil de recherche personnel qui relève **une fois par jour** (après clôture NYSE) les cours des
+actions du S&P 500, stocke l'historique quotidien, et affiche un dashboard classant les actions
+qui ont le plus baissé par rapport à leur plus-haut de la semaine, du mois et des 52 dernières
+semaines.
 
 Ce n'est **pas** un conseiller financier : une forte baisse peut signaler une opportunité comme un
 problème réel ("falling knife"). Le dashboard présente des données factuelles, jamais des
@@ -11,21 +12,30 @@ recommandations d'achat.
 ## Architecture
 
 ```
-GitHub Actions (cron, Python) --> Yahoo Finance (yfinance, appel groupé)
+GitHub Actions (cron quotidien, Python) --> Yahoo Finance (yfinance, appel groupé)
         |
         v (upsert, service key)
-Supabase Postgres (tickers, prices, metrics)
+Supabase Postgres (tickers, daily_closes, metrics)
         ^ (lecture, clé anon, RLS)
         |
 Front statique sans build (Cloudflare Pages) --> /web
 ```
 
 Trois composants indépendants :
-- **`/ingest`** — script Python exécuté par GitHub Actions : récupère les cours, calcule les
-  métriques de drawdown, purge l'historique ancien.
+- **`/ingest`** — script Python exécuté par GitHub Actions : récupère les clôtures quotidiennes,
+  calcule les métriques de drawdown (semaine / mois / 52 semaines).
 - **`/supabase`** — migrations SQL (schéma + RLS).
 - **`/web`** — dashboard + page admin, HTML/JS statique, **aucune étape de build**. Dépendances
   chargées via CDN ESM (esm.sh). À déposer tel quel sur Cloudflare Pages (drag & drop).
+
+### Pourquoi un relevé quotidien plutôt qu'intraday
+
+La première version relevait les cours toutes les 30 minutes en heures de marché. Pour un usage
+"un coup d'œil le soir", ça n'apportait rien de plus qu'un relevé après clôture, tout en exposant
+le pipeline 13× plus au rate-limiting de Yahoo. Un relevé quotidien dans une table
+`daily_closes` (une ligne/symbole/jour, ~500 lignes/jour, ~126k/an) permet en plus un vrai
+indicateur **52 semaines** — la métrique la plus standard pour ce genre de screening — et reste
+assez léger pour ne **jamais avoir besoin d'être purgé**.
 
 ## Contrainte : zéro npm en local
 
@@ -40,12 +50,11 @@ avec le poste local.
 ### 1. Créer le projet Supabase
 
 1. [supabase.com](https://supabase.com) → New project.
-2. Une fois créé : **SQL Editor** → coller et exécuter, dans l'ordre, le contenu de :
-   - [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) (tables + RLS lecture publique)
-   - [`supabase/migrations/0002_admin_write.sql`](supabase/migrations/0002_admin_write.sql) (droits d'écriture pour la page admin)
-   - [`supabase/migrations/0003_metrics_function.sql`](supabase/migrations/0003_metrics_function.sql) (fonction de recalcul des métriques)
+2. Une fois créé : **SQL Editor** → coller et exécuter, **dans l'ordre**, le contenu de chaque
+   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0005).
 3. **Project Settings → API** : noter l'**URL du projet** et la clé **`anon` `public`** (pour le
-   front) et la clé **`service_role`** (pour l'ingestion — à garder secrète).
+   front) et la clé **`service_role`** (pour l'ingestion — à garder secrète, jamais dans un
+   fichier du repo).
 4. **Authentication → Users → Add user** : créer **un seul compte** (le tien) avec email +
    mot de passe. C'est le compte utilisé pour te connecter à la page admin — il n'y a pas
    d'inscription publique.
@@ -54,17 +63,17 @@ avec le poste local.
 
 Dans le repo GitHub (Settings → Secrets and variables → Actions), ajouter :
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_KEY` (la clé `service_role`, jamais la `anon`)
+- `SUPABASE_SERVICE_KEY` (la clé secrète `service_role`, jamais la `anon`/`publishable`)
 
 Yahoo Finance ne demande aucune clé API.
 
 ### 3. Remplir `web/config.js`
 
-Éditer [`web/config.js`](web/config.js) avec l'URL du projet et la clé **`anon`** (jamais la
-`service_role`) :
+Éditer [`web/config.js`](web/config.js) avec l'URL du projet et la clé **`anon`/`publishable`**
+(jamais la clé secrète) :
 ```js
 export const SUPABASE_URL = "https://xxxx.supabase.co";
-export const SUPABASE_ANON_KEY = "eyJ...";
+export const SUPABASE_ANON_KEY = "eyJ..."; // ou "sb_publishable_..."
 ```
 Ces valeurs sont publiques par design : la sécurité repose sur le RLS, pas sur le secret de cette
 clé.
@@ -77,13 +86,23 @@ d'ingestion (sinon `ingest.py` n'a rien à récupérer) :
 1. Repo GitHub → onglet **Actions** → workflow **"Refresh S&P 500 tickers"** → **Run workflow**.
 2. Vérifier dans les logs qu'il a inséré ~500 tickers.
 
-### 5. Premier run d'ingestion manuel
+### 5. Backfill initial (52 semaines d'historique)
 
-1. Repo GitHub → **Actions** → workflow **"Ingest prices"** → **Run workflow**.
-2. Si lancé hors séance NYSE, le script sort proprement sans rien faire (log "market closed" ou
-   "outside regular session") — c'est normal, relancer pendant les heures de marché US pour un
-   vrai test (voir §5 du brief : 9:30–16:00 heure de New York, jours ouvrés).
-3. Vérifier dans Supabase (**Table Editor**) que `prices` et `metrics` se remplissent.
+Contrairement à l'ancienne version intraday, l'indicateur 52 semaines n'a pas besoin d'un an
+d'attente : `yfinance` fournit aussi l'historique passé. Un seul run avec une fenêtre large suffit
+à peupler `daily_closes` d'un coup :
+
+1. Repo GitHub → **Actions** → workflow **"Ingest daily closes"** → **Run workflow**.
+2. Dans le champ `period` proposé par GitHub, saisir **`1y`** (au lieu de la valeur par défaut
+   `5d`) → **Run workflow**.
+3. Peut être lancé n'importe quel jour (y compris un week-end) : une fenêtre explicite ignore la
+   vérification "jour de bourse", contrairement au run quotidien normal.
+4. Vérifier dans Supabase (**Table Editor**) que `daily_closes` et `metrics` se remplissent, avec
+   `metrics.high_52w` / `drawdown_52w_pct` renseignés.
+
+Les runs suivants (cron quotidien, ou `workflow_dispatch` sans changer `period`) utilisent la
+valeur par défaut `5d` : une petite fenêtre glissante qui rattrape automatiquement un jour de cron
+manqué, sans tout re-télécharger.
 
 ### 6. Déploiement Cloudflare Pages
 
@@ -122,9 +141,10 @@ python -m venv .venv && source .venv/bin/activate  # ou .venv\Scripts\activate s
 pip install -r requirements.txt
 cp .env.example .env   # puis remplir SUPABASE_URL / SUPABASE_SERVICE_KEY
 export $(grep -v '^#' .env | xargs)   # ou set les variables manuellement sous Windows
-python manual_test.py      # smoke test sur 5 symboles, ne touche pas Supabase
-python refresh_tickers.py  # peuple/rafraîchit la table tickers
-python ingest.py           # récupère les prix + recalcule les métriques (si séance ouverte)
+python manual_test.py            # smoke test sur 5 symboles, ne touche pas Supabase
+python refresh_tickers.py        # peuple/rafraîchit la table tickers
+python ingest.py                 # run quotidien normal (fenêtre 5 jours)
+python ingest.py --period 1y     # backfill d'un an (utilisable n'importe quel jour)
 ```
 
 ---
@@ -132,20 +152,20 @@ python ingest.py           # récupère les prix + recalcule les métriques (si 
 ## Page d'administration
 
 `web/admin.html` — protégée par Supabase Auth (le compte créé à l'étape 1.4). Permet :
-- de voir des statistiques de stockage (nb de tickers actifs, nb de lignes dans `prices`, date du
-  point le plus ancien) ;
-- de déclencher une **purge manuelle** de l'historique de prix (au-delà d'un seuil en jours) ;
+- de voir des statistiques (nb de tickers actifs, nb de lignes dans `daily_closes`, date du point
+  le plus ancien) ;
 - d'activer/désactiver manuellement un ticker.
 
-La purge de 90 jours tourne déjà automatiquement à chaque ingestion (voir `ingest/ingest.py`) —
-la page admin sert surtout de filet de sécurité si le quota Supabase approche plus vite que prévu.
+Pas de purge manuelle ici : contrairement à l'ancien relevé intraday, `daily_closes` reste léger
+indéfiniment (~126k lignes/an), aucune gestion de rétention n'est nécessaire.
 
 ---
 
 ## Limites connues
 
 - **Cron best-effort** : GitHub Actions ne garantit pas le timing exact des workflows planifiés
-  (retards possibles en cas de charge). Le script est idempotent (upsert) pour tolérer ça.
+  (retards possibles en cas de charge). Le script est idempotent (upsert) et récupère une fenêtre
+  glissante de 5 jours à chaque run pour tolérer un run manqué.
 - **Désactivation après inactivité** : un workflow planifié GitHub Actions est désactivé après
   60 jours sans activité sur le repo. Si le dashboard arrête de se mettre à jour après une longue
   pause, relancer le workflow manuellement (`workflow_dispatch`) pour le réactiver.
@@ -153,14 +173,14 @@ la page admin sert surtout de filet de sécurité si le quota Supabase approche 
   rate-limiting et aux changements sans préavis. Un run partiel (symboles manquants) est toléré
   et loggé plutôt que de faire échouer tout le run. L'accès aux données passe par l'interface
   `PriceProvider` (`ingest/price_provider.py`), remplaçable par une autre source si Yahoo casse.
-- **Quota Supabase (free tier, ~500 Mo)** : purge automatique de l'historique `prices` au-delà de
-  90 jours à chaque run d'ingestion, + purge manuelle disponible sur la page admin.
 - **Scraping Wikipedia pour la liste S&P 500** : `refresh_tickers.py` parse la table Wikipedia des
   constituants. Si la page change de structure, le script peut échouer — corriger le parsing à ce
   moment-là plutôt que d'anticiper tous les cas.
+- **Quota Supabase (free tier, ~500 Mo)** : non-sujet avec `daily_closes` (~126k lignes/an, quelques
+  Mo/an) — plus besoin de politique de rétention.
 
 ## Statut
 
-Repo fonctionnel de bout en bout : migrations Supabase, ingestion Python + workflows GitHub
-Actions, dashboard + page admin statiques. Reste à faire selon usage réel : ajuster si Yahoo
-Finance ou le scraping Wikipedia posent problème en pratique.
+Repo fonctionnel de bout en bout : migrations Supabase, ingestion Python quotidienne + workflows
+GitHub Actions, dashboard + page admin statiques (thème sombre). Reste à faire selon usage réel :
+ajuster si Yahoo Finance ou le scraping Wikipedia posent problème en pratique.

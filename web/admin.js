@@ -33,26 +33,29 @@ function LoginForm({ onLoggedIn }) {
   }
 
   return html`
-    <form class="max-w-sm mx-auto mt-12 sm:mt-24 p-5 sm:p-6 border border-slate-200 rounded-lg bg-white" onSubmit=${submit}>
-      <h1 class="text-lg font-semibold mb-4">Administration</h1>
-      <label class="block text-sm text-slate-600 mb-1">Email</label>
+    <form
+      class="max-w-sm mx-auto mt-12 sm:mt-24 p-5 sm:p-6 bg-app-surface border border-app-border rounded-2xl"
+      onSubmit=${submit}
+    >
+      <h1 class="text-lg font-bold text-app-text mb-4">Administration</h1>
+      <label class="block text-sm text-app-muted mb-1">Email</label>
       <input
-        class="w-full border border-slate-300 rounded-md px-2 py-1.5 mb-3"
+        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-3 text-app-text focus:outline-none focus:border-app-muted"
         type="email"
         value=${email}
         onInput=${(e) => setEmail(e.target.value)}
         required
       />
-      <label class="block text-sm text-slate-600 mb-1">Mot de passe</label>
+      <label class="block text-sm text-app-muted mb-1">Mot de passe</label>
       <input
-        class="w-full border border-slate-300 rounded-md px-2 py-1.5 mb-4"
+        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-4 text-app-text focus:outline-none focus:border-app-muted"
         type="password"
         value=${password}
         onInput=${(e) => setPassword(e.target.value)}
         required
       />
-      ${error && html`<div class="text-sm text-red-600 mb-3">${error}</div>`}
-      <button class="w-full bg-slate-900 text-white rounded-md py-2 disabled:opacity-50" disabled=${busy}>
+      ${error && html`<div class="text-sm text-neg mb-3">${error}</div>`}
+      <button class="w-full bg-app-text text-app-bg font-semibold rounded-lg py-2 disabled:opacity-50" disabled=${busy}>
         ${busy ? "Connexion…" : "Se connecter"}
       </button>
     </form>
@@ -61,59 +64,9 @@ function LoginForm({ onLoggedIn }) {
 
 function StatCard({ label, value }) {
   return html`
-    <div class="border border-slate-200 rounded-lg p-3 bg-white">
-      <div class="text-xs text-slate-500">${label}</div>
-      <div class="text-lg font-semibold text-slate-900">${value}</div>
-    </div>
-  `;
-}
-
-function PurgePanel({ onPurged }) {
-  const [days, setDays] = useState(90);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
-
-  async function purge() {
-    if (!confirm(`Supprimer les prix de plus de ${days} jours ? Action irréversible.`)) return;
-    setBusy(true);
-    setMessage(null);
-    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await supabase.from("prices").delete().lt("ts", cutoff);
-    setBusy(false);
-    if (error) {
-      setMessage(`Erreur : ${error.message}`);
-      return;
-    }
-    setMessage("Purge effectuée.");
-    onPurged();
-  }
-
-  return html`
-    <div class="border border-slate-200 rounded-lg p-4 mb-6 bg-white">
-      <h2 class="font-semibold mb-2">Purge manuelle de l'historique</h2>
-      <p class="text-sm text-slate-500 mb-3">
-        Une purge automatique (90 jours) tourne déjà à chaque ingestion. Utile pour purger plus
-        agressivement si le quota Supabase approche.
-      </p>
-      <div class="flex flex-wrap items-center gap-2">
-        <label class="text-sm text-slate-600">Conserver les</label>
-        <input
-          type="number"
-          min="1"
-          class="w-20 border border-slate-300 rounded-md px-2 py-1"
-          value=${days}
-          onInput=${(e) => setDays(Number(e.target.value))}
-        />
-        <label class="text-sm text-slate-600">derniers jours</label>
-        <button
-          class="w-full sm:w-auto sm:ml-auto px-3 py-1.5 rounded-md bg-red-600 text-white disabled:opacity-50"
-          disabled=${busy}
-          onClick=${purge}
-        >
-          ${busy ? "Purge…" : "Purger"}
-        </button>
-      </div>
-      ${message && html`<div class="text-sm text-slate-500 mt-2">${message}</div>`}
+    <div class="bg-app-surface border border-app-border rounded-2xl p-3">
+      <div class="text-xs text-app-muted">${label}</div>
+      <div class="text-lg font-bold text-app-text tabular-nums">${value}</div>
     </div>
   `;
 }
@@ -127,11 +80,11 @@ function TickersPanel({ tickers, onToggle }) {
   );
 
   return html`
-    <div class="border border-slate-200 rounded-lg p-4 bg-white">
+    <div class="bg-app-surface border border-app-border rounded-2xl p-4">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-        <h2 class="font-semibold">Tickers (${tickers.length})</h2>
+        <h2 class="font-semibold text-app-text">Tickers (${tickers.length})</h2>
         <input
-          class="border border-slate-300 rounded-md px-2 py-1 text-sm"
+          class="bg-app-bg border border-app-border rounded-full px-3 py-1 text-sm text-app-text focus:outline-none focus:border-app-muted"
           placeholder="Filtrer…"
           value=${filter}
           onInput=${(e) => setFilter(e.target.value)}
@@ -139,24 +92,24 @@ function TickersPanel({ tickers, onToggle }) {
       </div>
       <div class="max-h-80 overflow-y-auto overflow-x-auto text-sm">
         <table class="w-full">
-          <thead class="text-xs uppercase text-slate-500 sticky top-0 bg-white">
+          <thead class="text-xs uppercase tracking-wide text-app-muted sticky top-0 bg-app-surface">
             <tr>
-              <th class="text-left py-1 pr-2">Symbole</th>
-              <th class="text-left py-1 pr-2">Nom</th>
-              <th class="text-left py-1 pr-2">Actif</th>
+              <th class="text-left py-1.5 pr-2">Symbole</th>
+              <th class="text-left py-1.5 pr-2">Nom</th>
+              <th class="text-left py-1.5 pr-2">Actif</th>
               <th></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-app-border/60">
             ${visible.map(
               (t) => html`
                 <tr>
-                  <td class="py-1 pr-2 font-medium whitespace-nowrap">${t.symbol}</td>
-                  <td class="py-1 pr-2 text-slate-600 max-w-[140px] sm:max-w-none truncate">${t.name}</td>
-                  <td class="py-1 pr-2">${t.is_active ? "Oui" : "Non"}</td>
-                  <td class="py-1 text-right">
+                  <td class="py-1.5 pr-2 font-medium text-app-text whitespace-nowrap">${t.symbol}</td>
+                  <td class="py-1.5 pr-2 text-app-muted max-w-[140px] sm:max-w-none truncate">${t.name}</td>
+                  <td class="py-1.5 pr-2 text-app-muted">${t.is_active ? "Oui" : "Non"}</td>
+                  <td class="py-1.5 text-right">
                     <button
-                      class="text-xs underline text-slate-500 hover:text-slate-800 whitespace-nowrap"
+                      class="text-xs underline text-app-muted hover:text-app-text whitespace-nowrap"
                       onClick=${() => onToggle(t.symbol, !t.is_active)}
                     >
                       ${t.is_active ? "Désactiver" : "Activer"}
@@ -175,7 +128,7 @@ function TickersPanel({ tickers, onToggle }) {
 function AdminApp() {
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [stats, setStats] = useState({ activeTickers: "—", priceRows: "—", oldestTs: "—" });
+  const [stats, setStats] = useState({ activeTickers: "—", closeRows: "—", oldestDate: "—" });
   const [tickers, setTickers] = useState([]);
 
   useEffect(() => {
@@ -188,15 +141,15 @@ function AdminApp() {
   }, []);
 
   async function loadStats() {
-    const [tickersRes, pricesRes, oldestRes] = await Promise.all([
+    const [tickersRes, closesRes, oldestRes] = await Promise.all([
       supabase.from("tickers").select("*", { count: "exact", head: true }).eq("is_active", true),
-      supabase.from("prices").select("*", { count: "exact", head: true }),
-      supabase.from("prices").select("ts").order("ts", { ascending: true }).limit(1),
+      supabase.from("daily_closes").select("*", { count: "exact", head: true }),
+      supabase.from("daily_closes").select("date").order("date", { ascending: true }).limit(1),
     ]);
     setStats({
       activeTickers: tickersRes.count ?? "—",
-      priceRows: pricesRes.count ?? "—",
-      oldestTs: oldestRes.data?.[0]?.ts ? new Date(oldestRes.data[0].ts).toLocaleDateString("fr-FR") : "—",
+      closeRows: closesRes.count ?? "—",
+      oldestDate: oldestRes.data?.[0]?.date ?? "—",
     });
   }
 
@@ -223,7 +176,7 @@ function AdminApp() {
   }
 
   if (checkingSession) {
-    return html`<div class="p-6 text-sm text-slate-400">Chargement…</div>`;
+    return html`<div class="p-6 text-sm text-app-muted">Chargement…</div>`;
   }
 
   if (!session) {
@@ -233,18 +186,21 @@ function AdminApp() {
   return html`
     <div class="max-w-3xl mx-auto p-4">
       <header class="flex flex-wrap items-center justify-between gap-2 mb-6">
-        <h1 class="text-xl font-semibold">Administration</h1>
+        <h1 class="text-xl font-bold text-app-text">Administration</h1>
         <div class="flex items-center gap-3 text-sm">
-          <a href="./index.html" class="underline text-slate-500 hover:text-slate-800">← Dashboard</a>
-          <button class="text-slate-500 hover:text-slate-800" onClick=${logout}>Déconnexion</button>
+          <a href="./index.html" class="underline text-app-muted hover:text-app-text">← Dashboard</a>
+          <button class="text-app-muted hover:text-app-text" onClick=${logout}>Déconnexion</button>
         </div>
       </header>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <${StatCard} label="Tickers actifs" value=${stats.activeTickers} />
-        <${StatCard} label="Lignes de prix" value=${stats.priceRows} />
-        <${StatCard} label="Plus ancien point" value=${stats.oldestTs} />
+        <${StatCard} label="Lignes de clôtures" value=${stats.closeRows} />
+        <${StatCard} label="Historique depuis" value=${stats.oldestDate} />
       </div>
-      <${PurgePanel} onPurged=${loadStats} />
+      <p class="text-xs text-app-muted mb-6">
+        L'historique quotidien reste léger indéfiniment (~500 lignes/jour) — aucune purge n'est
+        nécessaire ici, contrairement à l'ancien relevé intraday.
+      </p>
       <${TickersPanel} tickers=${tickers} onToggle=${toggleTicker} />
     </div>
   `;

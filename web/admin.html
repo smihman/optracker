@@ -3,10 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0a0e17" />
     <title>S&amp;P 500 — Administration</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              app: {
+                bg: "#0a0e17",
+                surface: "#131826",
+                border: "#232a3b",
+                muted: "#8b93a7",
+                text: "#eef1f6",
+              },
+              pos: "#22d38a",
+              neg: "#ff5470",
+            },
+          },
+        },
+      };
+    </script>
   </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body class="bg-app-bg text-app-text min-h-screen">
     <div id="app"></div>
     <script type="module" src="./admin.js"></script>
   </body>
