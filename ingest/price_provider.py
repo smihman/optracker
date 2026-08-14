@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 class DailyClose:
     symbol: str
     date: date
+    open: Optional[float]
     close: float
     volume: Optional[int]
 
@@ -110,10 +111,12 @@ def _extract_symbol_closes(df: pd.DataFrame, symbol: str) -> tuple[list[DailyClo
     out: list[DailyClose] = []
     for ts, row in sub.iterrows():
         volume = row.get("Volume")
+        open_price = row.get("Open")
         out.append(
             DailyClose(
                 symbol=symbol,
                 date=ts.date(),
+                open=float(open_price) if pd.notna(open_price) else None,
                 close=float(row["Close"]),
                 volume=int(volume) if pd.notna(volume) else None,
             )

@@ -2,8 +2,8 @@
 
 Outil de recherche personnel qui relève **une fois par jour** (après clôture NYSE) les cours des
 actions du S&P 500, stocke l'historique quotidien, et affiche un dashboard classant les actions
-qui ont le plus baissé par rapport à leur plus-haut de la semaine, du mois et des 52 dernières
-semaines.
+qui ont le plus baissé aujourd'hui (vs ouverture) et par rapport à leur plus-haut de la semaine et
+du mois — pensé pour repérer des creux avant un rebond (usage options).
 
 Ce n'est **pas** un conseiller financier : une forte baisse peut signaler une opportunité comme un
 problème réel ("falling knife"). Le dashboard présente des données factuelles, jamais des
@@ -22,8 +22,8 @@ Front statique sans build (Cloudflare Pages) --> /web
 ```
 
 Trois composants indépendants :
-- **`/ingest`** — script Python exécuté par GitHub Actions : récupère les clôtures quotidiennes,
-  calcule les métriques de drawdown (semaine / mois / 52 semaines).
+- **`/ingest`** — script Python exécuté par GitHub Actions : récupère les clôtures quotidiennes
+  (open + close), calcule les métriques de performance (vs ouverture du jour / semaine / mois).
 - **`/supabase`** — migrations SQL (schéma + RLS).
 - **`/web`** — dashboard + page admin, HTML/JS statique, **aucune étape de build**. Dépendances
   chargées via CDN ESM (esm.sh). À déposer tel quel sur Cloudflare Pages (drag & drop).
@@ -32,9 +32,8 @@ Trois composants indépendants :
 
 La première version relevait les cours toutes les 30 minutes en heures de marché. Pour un usage
 "un coup d'œil le soir", ça n'apportait rien de plus qu'un relevé après clôture, tout en exposant
-le pipeline 13× plus au rate-limiting de Yahoo. Un relevé quotidien dans une table
-`daily_closes` (une ligne/symbole/jour, ~500 lignes/jour, ~126k/an) permet en plus un vrai
-indicateur **52 semaines** — la métrique la plus standard pour ce genre de screening — et reste
+le pipeline 13× plus au rate-limiting de Yahoo. Un relevé quotidien dans une table `daily_closes`
+(une ligne/symbole/jour avec open + close, ~500 lignes/jour, ~126k/an) suffit largement et reste
 assez léger pour ne **jamais avoir besoin d'être purgé**.
 
 ## Contrainte : zéro npm en local
@@ -51,7 +50,7 @@ avec le poste local.
 
 1. [supabase.com](https://supabase.com) → New project.
 2. Une fois créé : **SQL Editor** → coller et exécuter, **dans l'ordre**, le contenu de chaque
-   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0005).
+   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0006).
 3. **Project Settings → API** : noter l'**URL du projet** et la clé **`anon` `public`** (pour le
    front) et la clé **`service_role`** (pour l'ingestion — à garder secrète, jamais dans un
    fichier du repo).
@@ -86,19 +85,19 @@ d'ingestion (sinon `ingest.py` n'a rien à récupérer) :
 1. Repo GitHub → onglet **Actions** → workflow **"Refresh S&P 500 tickers"** → **Run workflow**.
 2. Vérifier dans les logs qu'il a inséré ~500 tickers.
 
-### 5. Backfill initial (52 semaines d'historique)
+### 5. Backfill initial (historique pour le graphique de détail)
 
-Contrairement à l'ancienne version intraday, l'indicateur 52 semaines n'a pas besoin d'un an
-d'attente : `yfinance` fournit aussi l'historique passé. Un seul run avec une fenêtre large suffit
-à peupler `daily_closes` d'un coup :
+Le dashboard affiche 6 mois de tendance par titre (clic sur une ligne) — sans backfill, ce
+graphique met des mois à se remplir jour après jour. Un seul run avec une fenêtre large suffit à
+peupler `daily_closes` d'un coup, `yfinance` fournissant aussi l'historique passé :
 
 1. Repo GitHub → **Actions** → workflow **"Ingest daily closes"** → **Run workflow**.
-2. Dans le champ `period` proposé par GitHub, saisir **`1y`** (au lieu de la valeur par défaut
-   `5d`) → **Run workflow**.
+2. Dans le champ `period` proposé par GitHub, saisir par exemple **`1y`** (au lieu de la valeur
+   par défaut `5d`) → **Run workflow**.
 3. Peut être lancé n'importe quel jour (y compris un week-end) : une fenêtre explicite ignore la
    vérification "jour de bourse", contrairement au run quotidien normal.
 4. Vérifier dans Supabase (**Table Editor**) que `daily_closes` et `metrics` se remplissent, avec
-   `metrics.high_52w` / `drawdown_52w_pct` renseignés.
+   `metrics.today_change_pct` / `week_drawdown_pct` / `month_drawdown_pct` renseignés.
 
 Les runs suivants (cron quotidien, ou `workflow_dispatch` sans changer `period`) utilisent la
 valeur par défaut `5d` : une petite fenêtre glissante qui rattrape automatiquement un jour de cron

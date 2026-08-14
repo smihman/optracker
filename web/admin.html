@@ -3,23 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0a0e17" />
+    <meta name="theme-color" content="#000000" />
     <title>S&amp;P 500 — Administration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Palette noir/blanc/gris iOS (dark mode) : couleur réservée
+      // uniquement aux chiffres de performance (pos/neg), tout le
+      // reste (fonds, bordures, boutons) reste monochrome.
       tailwind.config = {
         theme: {
           extend: {
             colors: {
               app: {
-                bg: "#0a0e17",
-                surface: "#131826",
-                border: "#232a3b",
-                muted: "#8b93a7",
-                text: "#eef1f6",
+                bg: "#000000",
+                surface: "#1c1c1e",
+                border: "#2c2c2e",
+                muted: "#8e8e93",
+                text: "#ffffff",
               },
-              pos: "#22d38a",
-              neg: "#ff5470",
+              pos: "#30d158",
+              neg: "#ff453a",
             },
           },
         },

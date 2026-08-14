@@ -39,6 +39,7 @@ def upsert_daily_closes(client, closes) -> None:
         {
             "symbol": c.symbol,
             "date": c.date.isoformat(),
+            "open": c.open,
             "close": c.close,
             "volume": c.volume,
         }

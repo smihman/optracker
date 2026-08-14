@@ -11,14 +11,21 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const SECTORS_ALL = "Tous secteurs";
 const METRICS = [
+  { key: "today_change_pct", label: "Auj." },
   { key: "week_drawdown_pct", label: "Sem." },
   { key: "month_drawdown_pct", label: "Mois" },
-  { key: "drawdown_52w_pct", label: "52 sem." },
 ];
+
+// iOS dark-mode system colors — gardées en JS pour Chart.js, qui ne
+// lit pas les classes Tailwind.
+const COLOR_POS = "#30d158";
+const COLOR_NEG = "#ff453a";
+const COLOR_MUTED = "#8e8e93";
 
 function formatPct(value) {
   if (value === null || value === undefined) return "—";
-  return `${value.toFixed(2)}%`;
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
 }
 
 function formatPrice(value) {
@@ -69,27 +76,21 @@ function SortableTh({ label, sortKey, align, tableSort, onSort, hideOnMobile }) 
   `;
 }
 
-function DrawdownChip({ value }) {
+// Pas de fond coloré : uniquement le texte, gras, en vert/rouge — le
+// reste de l'interface reste noir/blanc/gris.
+function DrawdownText({ value }) {
   if (value === null || value === undefined) {
-    return html`<span class="text-app-muted text-xs">—</span>`;
+    return html`<span class="text-app-muted text-sm">—</span>`;
   }
-  const isNeg = value < 0;
-  const isPos = value > 0;
-  const cls = isNeg ? "bg-neg/10 text-neg" : isPos ? "bg-pos/10 text-pos" : "bg-app-border/60 text-app-muted";
-  return html`
-    <span class="inline-block ${cls} rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums whitespace-nowrap">
-      ${formatPct(value)}
-    </span>
-  `;
+  const color = value < 0 ? "text-neg" : value > 0 ? "text-pos" : "text-app-muted";
+  return html`<span class="font-semibold text-sm tabular-nums whitespace-nowrap ${color}">${formatPct(value)}</span>`;
 }
 
 function DrawdownCell({ value }) {
-  return html`<td class="px-2 sm:px-3 py-3 text-right">
-    <${DrawdownChip} value=${value} />
-  </td>`;
+  return html`<td class="px-2 sm:px-3 py-3 text-right"><${DrawdownText} value=${value} /></td>`;
 }
 
-function SymbolDetail({ symbol, onClose }) {
+function SymbolDetail({ symbol, todayChangePct, onClose }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [points, setPoints] = useState([]);
@@ -124,8 +125,8 @@ function SymbolDetail({ symbol, onClose }) {
     if (chartRef.current) chartRef.current.destroy();
 
     const isUp = points.length > 1 && points[points.length - 1].close >= points[0].close;
-    const lineColor = isUp ? "#22d38a" : "#ff5470";
-    const fillColor = isUp ? "rgba(34,211,138,0.08)" : "rgba(255,84,112,0.08)";
+    const lineColor = isUp ? COLOR_POS : COLOR_NEG;
+    const fillColor = isUp ? "rgba(48,209,88,0.08)" : "rgba(255,69,58,0.08)";
 
     chartRef.current = new Chart(canvasRef.current, {
       type: "line",
@@ -151,10 +152,10 @@ function SymbolDetail({ symbol, onClose }) {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { maxTicksLimit: 5, color: "#8b93a7" }, grid: { display: false } },
+          x: { ticks: { maxTicksLimit: 5, color: COLOR_MUTED }, grid: { display: false } },
           y: {
-            ticks: { color: "#8b93a7", callback: (v) => `$${v}` },
-            grid: { color: "rgba(139,147,167,0.1)" },
+            ticks: { color: COLOR_MUTED, callback: (v) => `$${v}` },
+            grid: { color: "rgba(142,142,147,0.15)" },
           },
         },
       },
@@ -165,7 +166,7 @@ function SymbolDetail({ symbol, onClose }) {
   const last = points[points.length - 1];
 
   return html`
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4" onClick=${onClose}>
+    <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4" onClick=${onClose}>
       <div
         class="bg-app-surface border border-app-border rounded-2xl shadow-2xl w-full max-w-2xl p-4 sm:p-5 max-h-[90vh] overflow-y-auto"
         onClick=${(e) => e.stopPropagation()}
@@ -173,7 +174,10 @@ function SymbolDetail({ symbol, onClose }) {
         <div class="flex items-start justify-between mb-1">
           <div>
             <h2 class="text-lg font-bold text-app-text">${symbol}</h2>
-            ${last && html`<p class="text-2xl font-bold tabular-nums mt-0.5">${formatPrice(last.close)}</p>`}
+            <div class="flex items-baseline gap-2 mt-0.5">
+              ${last && html`<p class="text-2xl font-bold tabular-nums">${formatPrice(last.close)}</p>`}
+              <${DrawdownText} value=${todayChangePct} />
+            </div>
           </div>
           <button class="text-app-muted hover:text-app-text text-lg leading-none px-1" onClick=${onClose}>✕</button>
         </div>
@@ -225,7 +229,9 @@ function Top10Panel({ rows, metric, onMetricChange, onSelect }) {
                       <span class="font-bold text-sm text-app-text">${r.symbol}</span>
                       <span class="text-[10px] text-app-muted">#${i + 1}</span>
                     </div>
-                    <div class="text-lg font-bold text-neg tabular-nums">${formatPct(r[metric])}</div>
+                    <div class="text-lg font-bold tabular-nums ${r[metric] < 0 ? "text-neg" : r[metric] > 0 ? "text-pos" : "text-app-muted"}">
+                      ${formatPct(r[metric])}
+                    </div>
                     <div class="text-xs text-app-muted truncate mt-0.5">${r.name}</div>
                   </button>
                 `
@@ -256,7 +262,7 @@ function App() {
     const { data, error: err } = await supabase
       .from("metrics")
       .select(
-        "symbol, last_price, last_date, week_drawdown_pct, month_drawdown_pct, drawdown_52w_pct, tickers(name, sector, is_active)"
+        "symbol, last_price, last_date, today_change_pct, week_drawdown_pct, month_drawdown_pct, tickers(name, sector, is_active)"
       )
       .order("week_drawdown_pct", { ascending: true });
 
@@ -274,9 +280,9 @@ function App() {
         sector: r.tickers?.sector ?? "",
         last_price: r.last_price,
         last_date: r.last_date,
+        today_change_pct: r.today_change_pct,
         week_drawdown_pct: r.week_drawdown_pct,
         month_drawdown_pct: r.month_drawdown_pct,
-        drawdown_52w_pct: r.drawdown_52w_pct,
       }));
 
     setRows(flat);
@@ -317,12 +323,14 @@ function App() {
     [rows]
   );
 
+  const selectedRow = selected ? rows.find((r) => r.symbol === selected) : null;
+
   return html`
     <div class="max-w-6xl mx-auto p-4">
       <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 class="text-2xl font-bold tracking-tight text-app-text">S&P 500</h1>
-          <p class="text-sm text-app-muted">Décotes vs plus-haut — recherche perso, pas un conseil.</p>
+          <p class="text-sm text-app-muted">Vs ouverture / semaine / mois — recherche perso, pas un conseil.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
           <span class="text-app-muted whitespace-nowrap">Clôture du ${formatCloseDate(lastCloseDate)}</span>
@@ -374,6 +382,13 @@ function App() {
                   onSort=${toggleSort}
                 />
                 <${SortableTh}
+                  label="Auj."
+                  sortKey="today_change_pct"
+                  align="right"
+                  tableSort=${tableSort}
+                  onSort=${toggleSort}
+                />
+                <${SortableTh}
                   label="Sem."
                   sortKey="week_drawdown_pct"
                   align="right"
@@ -383,13 +398,6 @@ function App() {
                 <${SortableTh}
                   label="Mois"
                   sortKey="month_drawdown_pct"
-                  align="right"
-                  tableSort=${tableSort}
-                  onSort=${toggleSort}
-                />
-                <${SortableTh}
-                  label="52 sem."
-                  sortKey="drawdown_52w_pct"
                   align="right"
                   tableSort=${tableSort}
                   onSort=${toggleSort}
@@ -408,9 +416,9 @@ function App() {
                     <td class="px-2 sm:px-3 py-3 text-right text-app-text tabular-nums hidden sm:table-cell whitespace-nowrap">
                       ${formatPrice(r.last_price)}
                     </td>
+                    <${DrawdownCell} value=${r.today_change_pct} />
                     <${DrawdownCell} value=${r.week_drawdown_pct} />
                     <${DrawdownCell} value=${r.month_drawdown_pct} />
-                    <${DrawdownCell} value=${r.drawdown_52w_pct} />
                   </tr>
                 `
               )}
@@ -422,7 +430,12 @@ function App() {
           </div>`}
         </div>
       `}
-      ${selected && html`<${SymbolDetail} symbol=${selected} onClose=${() => setSelected(null)} />`}
+      ${selected &&
+      html`<${SymbolDetail}
+        symbol=${selected}
+        todayChangePct=${selectedRow?.today_change_pct}
+        onClose=${() => setSelected(null)}
+      />`}
 
       <footer class="mt-8 text-xs text-app-muted">
         <a href="./admin.html" class="underline hover:text-app-text">Administration</a>

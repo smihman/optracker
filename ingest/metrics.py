@@ -1,6 +1,6 @@
-"""Week/month/52-week boundary computation and the call to the
+"""Week/month boundary computation and the call to the
 `recompute_metrics` SQL function (see
-supabase/migrations/0005_daily_closes.sql).
+supabase/migrations/0006_open_and_drop_52w.sql).
 
 Working in plain America/New_York calendar dates rather than tz-aware
 timestamps: daily closes represent whole trading days, so there's no
@@ -23,17 +23,11 @@ def month_start(today: date) -> date:
     return today.replace(day=1)
 
 
-def year_start(today: date) -> date:
-    """365 calendar days back — the standard "52-week" lookback."""
-    return today - timedelta(days=365)
-
-
 def recompute_metrics(client, today: date) -> None:
     client.rpc(
         "recompute_metrics",
         {
             "week_start": week_start(today).isoformat(),
             "month_start": month_start(today).isoformat(),
-            "year_start": year_start(today).isoformat(),
         },
     ).execute()
