@@ -300,16 +300,16 @@ function Top10Panel({ rows, loading, metric, onMetricChange, direction, onToggle
             <${SwapIcon} className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div class="relative flex rounded-full border border-app-border p-0.5 text-xs">
+        <div class="relative flex bg-app-surface rounded-full border border-white/[0.08] p-1 text-sm">
           <div
-            class="absolute top-0.5 bottom-0.5 rounded-full bg-app-text transition-all duration-300 ease-juicy"
+            class="absolute top-1 bottom-1 rounded-full bg-app-text shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-all duration-300 ease-juicy"
             style=${{ left: `${activeIndex * (100 / METRICS.length)}%`, width: `${100 / METRICS.length}%` }}
           ></div>
           ${METRICS.map(
             (m) => html`
               <button
                 title=${m.title}
-                class=${"relative z-10 px-3 py-1.5 rounded-full transition-colors duration-200 " +
+                class=${"relative z-10 px-4 py-1.5 rounded-full font-medium transition-colors duration-200 " +
                 (metric === m.key ? "text-app-bg" : "text-app-muted hover:text-app-text")}
                 onClick=${() => onMetricChange(m.key)}
               >
@@ -371,7 +371,11 @@ function App() {
   useEffect(() => {
     const el = filterBarRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver((entries) => setFilterBarHeight(entries[0].contentRect.height));
+    // offsetHeight (border-box, padding inclus), pas contentRect.height
+    // (content-box, padding exclu) : la barre a du padding vertical, donc
+    // contentRect sous-évaluait sa vraie hauteur affichée — le tableau se
+    // calait trop haut et mordait sur la première ligne.
+    const observer = new ResizeObserver(() => setFilterBarHeight(el.offsetHeight));
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -567,7 +571,7 @@ function App() {
                   (r) => html`
                     <tr
                       key=${r.symbol}
-                      class="border-l-2 border-l-transparent hover:border-l-app-text/40 hover:bg-app-surface/60 active:bg-app-surface cursor-pointer transition-all duration-150"
+                      class="relative border-l-2 border-l-transparent hover:border-l-app-text/40 hover:bg-app-surface/60 active:bg-app-surface cursor-pointer hover:-translate-y-0.5 active:-translate-y-0.5 hover:shadow-[0_6px_16px_-6px_rgba(255,255,255,0.1)] active:shadow-[0_6px_16px_-6px_rgba(255,255,255,0.1)] transition-all duration-150 ease-juicy"
                       onClick=${() => setSelected(r.symbol)}
                     >
                       <td class="px-2 sm:px-3 py-3.5">
