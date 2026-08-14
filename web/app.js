@@ -285,6 +285,18 @@ function Top10Panel({ rows, loading, metric, onMetricChange, direction, onToggle
   const metricLabel = METRICS[activeIndex]?.label ?? "";
   const directionLabel = direction === "up" ? "hausses" : "baisses";
 
+  // Le curseur épouse la largeur réelle du bouton actif (mesurée), pas un
+  // tiers égal de la largeur totale — "Auj." est bien plus court que
+  // "Sem."/"Mois", un partage en tiers laissait un pavé blanc visiblement
+  // trop large autour de son texte.
+  const btnRefs = useRef([]);
+  const [thumb, setThumb] = useState({ left: 0, width: 0 });
+
+  useEffect(() => {
+    const el = btnRefs.current[activeIndex];
+    if (el) setThumb({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [metric, rows.length]);
+
   return html`
     <section>
       <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -303,11 +315,12 @@ function Top10Panel({ rows, loading, metric, onMetricChange, direction, onToggle
         <div class="relative flex bg-app-surface rounded-full border border-white/[0.08] p-1 text-sm">
           <div
             class="absolute top-1 bottom-1 rounded-full bg-app-text shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-all duration-300 ease-juicy"
-            style=${{ left: `${activeIndex * (100 / METRICS.length)}%`, width: `${100 / METRICS.length}%` }}
+            style=${{ left: `${thumb.left}px`, width: `${thumb.width}px` }}
           ></div>
           ${METRICS.map(
-            (m) => html`
+            (m, i) => html`
               <button
+                ref=${(el) => (btnRefs.current[i] = el)}
                 title=${m.title}
                 class=${"relative z-10 px-4 py-1.5 rounded-full font-medium transition-colors duration-200 " +
                 (metric === m.key ? "text-app-bg" : "text-app-muted hover:text-app-text")}
