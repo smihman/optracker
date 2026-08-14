@@ -40,10 +40,13 @@
                 "100%": { opacity: "1", transform: "scale(1)" },
               },
             },
+            // "backwards", pas "both" : voir index.html pour l'explication
+            // (évite de verrouiller transform/opacity après l'animation,
+            // ce qui bloquerait les hover:/active: sur le même élément).
             animation: {
-              "fade-in": "fadeIn 0.25s ease-out both",
-              "fade-in-up": "fadeInUp 0.35s ease-out both",
-              "scale-in": "scaleIn 0.2s cubic-bezier(0.34,1.56,0.64,1) both",
+              "fade-in": "fadeIn 0.25s ease-out backwards",
+              "fade-in-up": "fadeInUp 0.35s ease-out backwards",
+              "scale-in": "scaleIn 0.2s cubic-bezier(0.34,1.56,0.64,1) backwards",
             },
             transitionTimingFunction: {
               juicy: "cubic-bezier(0.34, 1.56, 0.64, 1)",

@@ -244,7 +244,7 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
   const last = points[points.length - 1];
 
   return html`
-    <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 animate-fade-in" onClick=${onClose}>
+    <div class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 animate-fade-in" onClick=${onClose}>
       <div
         class="bg-app-surface border border-app-border rounded-2xl shadow-2xl w-full max-w-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto animate-scale-in"
         onClick=${(e) => e.stopPropagation()}
@@ -329,7 +329,7 @@ function Top10Panel({ rows, loading, metric, onMetricChange, direction, onToggle
                 (r, i) => html`
                   <button
                     key=${r.symbol}
-                    class="flex-shrink-0 w-32 sm:w-36 text-left bg-app-surface border border-app-border rounded-2xl p-4 hover:border-app-muted/60 hover:-translate-y-1 active:-translate-y-1 hover:shadow-[0_10px_30px_-8px_rgba(255,255,255,0.08)] active:shadow-[0_10px_30px_-8px_rgba(255,255,255,0.08)] active:scale-[0.98] transition-all duration-200 ease-juicy animate-fade-in-up"
+                    class="flex-shrink-0 w-32 sm:w-36 text-left bg-app-surface border border-white/[0.12] rounded-2xl p-4 hover:border-white/25 hover:-translate-y-1.5 active:-translate-y-1.5 hover:shadow-[0_10px_30px_-8px_rgba(255,255,255,0.1)] active:shadow-[0_10px_30px_-8px_rgba(255,255,255,0.1)] active:scale-[0.98] transition-all duration-200 ease-juicy animate-fade-in-up"
                     style=${{ animationDelay: `${i * 35}ms` }}
                     onClick=${() => onSelect(r.symbol)}
                   >
@@ -360,6 +360,21 @@ function App() {
   const [top10Direction, setTop10Direction] = useState("down");
   const [tableSort, setTableSort] = useState({ key: "week_drawdown_pct", dir: "asc" });
   const [selected, setSelected] = useState(null);
+
+  // Le header du tableau colle juste sous la barre de filtres, elle
+  // aussi collante. Sa hauteur change entre mobile (recherche + select
+  // sur 2 lignes) et desktop (1 ligne) : on la mesure au runtime au
+  // lieu de deviner un décalage en pixels.
+  const filterBarRef = useRef(null);
+  const [filterBarHeight, setFilterBarHeight] = useState(0);
+
+  useEffect(() => {
+    const el = filterBarRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => setFilterBarHeight(entries[0].contentRect.height));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   function toggleSort(key) {
     setTableSort((prev) => (prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
@@ -474,7 +489,7 @@ function App() {
       />
 
       <div class="border-t border-app-border/60 mt-8 pt-6">
-        <div class="sticky top-0 z-20 bg-app-bg pt-2 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div ref=${filterBarRef} class="sticky top-0 z-20 bg-app-bg pt-2 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
           <div class="flex flex-wrap items-center gap-2.5">
             <div class="relative w-full sm:w-auto sm:flex-1 sm:min-w-[220px]">
               <${SearchIcon} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-app-muted" />
@@ -521,7 +536,7 @@ function App() {
         html`
           <div class="overflow-x-auto animate-fade-in">
             <table class="w-full text-sm">
-              <thead>
+              <thead class="sticky z-10 bg-app-bg" style=${{ top: `${filterBarHeight}px` }}>
                 <tr class="border-b border-app-border">
                   <${SortableTh} label="Titre" sortKey="symbol" tableSort=${tableSort} onSort=${toggleSort} />
                   <${SortableTh} label="Secteur" sortKey="sector" hideOnMobile tableSort=${tableSort} onSort=${toggleSort} />

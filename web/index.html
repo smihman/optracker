@@ -40,10 +40,16 @@
                 "100%": { opacity: "1", transform: "scale(1)" },
               },
             },
+            // "backwards" et non "both" : "both" garde la transform/opacity
+            // de fin d'animation en vigueur en permanence après coup, ce qui
+            // bloque tout hover:/active: qui touche la même propriété
+            // (transform en cascade CSS a priorité sur les styles normaux).
+            // "backwards" masque juste l'élément pendant animation-delay,
+            // sans rien verrouiller une fois l'animation terminée.
             animation: {
-              "fade-in": "fadeIn 0.25s ease-out both",
-              "fade-in-up": "fadeInUp 0.35s ease-out both",
-              "scale-in": "scaleIn 0.2s cubic-bezier(0.34,1.56,0.64,1) both",
+              "fade-in": "fadeIn 0.25s ease-out backwards",
+              "fade-in-up": "fadeInUp 0.35s ease-out backwards",
+              "scale-in": "scaleIn 0.2s cubic-bezier(0.34,1.56,0.64,1) backwards",
             },
             transitionTimingFunction: {
               // Léger dépassement ("spring") pour les interactions
