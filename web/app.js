@@ -13,7 +13,13 @@ const SECTORS_ALL = "Tous secteurs";
 const METRICS = [
   { key: "today_change_pct", label: "Auj.", title: "Variation depuis l'ouverture du jour" },
   { key: "week_change_pct", label: "Sem.", title: "Variation vs clôture du vendredi de la semaine dernière" },
-  { key: "month_change_pct", label: "Mois", title: "Variation vs clôture du dernier vendredi du mois dernier" },
+  {
+    key: "month_change_pct",
+    label: "Mois",
+    title: "Variation vs clôture du dernier vendredi du mois dernier",
+    hideOnMobile: true,
+  },
+  { key: "drawdown_20d_pct", label: "Creux", title: "Écart au plus-haut glissant sur 20 jours de bourse" },
 ];
 
 // iOS dark-mode system colors — gardées en JS pour Chart.js, qui ne
@@ -125,8 +131,10 @@ function ChangeText({ value }) {
   return html`<span class="font-semibold text-sm tabular-nums whitespace-nowrap ${color}">${formatPct(value)}</span>`;
 }
 
-function ChangeCell({ value }) {
-  return html`<td class="px-2 sm:px-3 py-3.5 text-right"><${ChangeText} value=${value} /></td>`;
+function ChangeCell({ value, hideOnMobile }) {
+  return html`<td class="px-2 sm:px-3 py-3.5 text-right ${hideOnMobile ? "hidden sm:table-cell" : ""}">
+    <${ChangeText} value=${value} />
+  </td>`;
 }
 
 function TableSkeleton() {
@@ -141,6 +149,7 @@ function TableSkeleton() {
               <div class="h-2.5 w-24 rounded bg-app-surface/70"></div>
             </div>
             <div class="h-3 w-12 rounded bg-app-surface hidden sm:block"></div>
+            <div class="h-3 w-10 rounded bg-app-surface"></div>
             <div class="h-3 w-10 rounded bg-app-surface"></div>
             <div class="h-3 w-10 rounded bg-app-surface"></div>
             <div class="h-3 w-10 rounded bg-app-surface"></div>
@@ -369,9 +378,13 @@ function App() {
   const [error, setError] = useState(null);
   const [sector, setSector] = useState(SECTORS_ALL);
   const [search, setSearch] = useState("");
-  const [top10Metric, setTop10Metric] = useState("week_change_pct");
+  // "Creux" par défaut : c'est la métrique la plus directe pour repérer
+  // un titre actuellement déprimé par rapport à sa normale récente
+  // (l'objectif recherché), plutôt qu'un simple déplacement sur la
+  // période comme Sem./Mois.
+  const [top10Metric, setTop10Metric] = useState("drawdown_20d_pct");
   const [top10Direction, setTop10Direction] = useState("down");
-  const [tableSort, setTableSort] = useState({ key: "week_change_pct", dir: "asc" });
+  const [tableSort, setTableSort] = useState({ key: "drawdown_20d_pct", dir: "asc" });
   const [selected, setSelected] = useState(null);
 
   // Le header du tableau colle juste sous la barre de filtres, elle
@@ -403,9 +416,9 @@ function App() {
     const { data, error: err } = await supabase
       .from("metrics")
       .select(
-        "symbol, last_price, last_date, today_change_pct, week_change_pct, month_change_pct, tickers(name, sector, is_active)"
+        "symbol, last_price, last_date, today_change_pct, week_change_pct, month_change_pct, drawdown_20d_pct, tickers(name, sector, is_active)"
       )
-      .order("week_change_pct", { ascending: true });
+      .order("drawdown_20d_pct", { ascending: true });
 
     if (err) {
       setError(err.message);
@@ -424,6 +437,7 @@ function App() {
         today_change_pct: r.today_change_pct,
         week_change_pct: r.week_change_pct,
         month_change_pct: r.month_change_pct,
+        drawdown_20d_pct: r.drawdown_20d_pct,
       }));
 
     setRows(flat);
@@ -453,9 +467,11 @@ function App() {
 
   // Le top 10 reste indépendant des filtres secteur/recherche/tri du tableau :
   // c'est une vue d'ensemble rapide, le tableau en dessous sert à creuser un
-  // sous-ensemble ou à trier par une autre colonne. Les 3 métriques sont
-  // symétriques (vs ouverture / vs vendredi dernier / vs dernier vendredi du
-  // mois dernier), donc "Hausses" a un vrai sens sur les trois désormais.
+  // sous-ensemble ou à trier par une autre colonne. Auj./Sem./Mois peuvent
+  // être positifs ou négatifs, donc "Hausses" a un vrai sens dessus. Creux
+  // reste par construction toujours <= 0 (écart à un plus-haut qui inclut
+  // le jour même) : "Hausses" y affiche juste les titres les moins loin de
+  // leur plus-haut 20 jours.
   const top10 = useMemo(() => {
     const sorted = [...rows].sort((a, b) => (a[top10Metric] ?? 0) - (b[top10Metric] ?? 0));
     return top10Direction === "down" ? sorted.slice(0, 10) : sorted.slice(-10).reverse();
@@ -572,6 +588,7 @@ function App() {
                         title=${m.title}
                         sortKey=${m.key}
                         align="right"
+                        hideOnMobile=${m.hideOnMobile}
                         tableSort=${tableSort}
                         onSort=${toggleSort}
                       />
@@ -595,9 +612,7 @@ function App() {
                       <td class="px-2 sm:px-3 py-3.5 text-right text-app-text tabular-nums hidden sm:table-cell whitespace-nowrap">
                         ${formatPrice(r.last_price)}
                       </td>
-                      <${ChangeCell} value=${r.today_change_pct} />
-                      <${ChangeCell} value=${r.week_change_pct} />
-                      <${ChangeCell} value=${r.month_change_pct} />
+                      ${METRICS.map((m) => html`<${ChangeCell} value=${r[m.key]} hideOnMobile=${m.hideOnMobile} />`)}
                     </tr>
                   `
                 )}

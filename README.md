@@ -2,9 +2,10 @@
 
 Outil de recherche personnel qui relève **une fois par jour** (après clôture NYSE) les cours des
 actions du S&P 500, stocke l'historique quotidien, et affiche un dashboard classant les actions
-qui ont le plus baissé aujourd'hui (vs ouverture), sur la semaine (vs clôture du vendredi dernier)
-et sur le mois (vs clôture du dernier vendredi du mois dernier) — pensé pour repérer des creux
-avant un rebond (usage options).
+sur 4 métriques : variation du jour (vs ouverture), de la semaine (vs clôture du vendredi
+dernier), du mois (vs clôture du dernier vendredi du mois dernier), et un indicateur "Creux"
+(écart au plus-haut glissant sur 20 jours de bourse) — pensé pour repérer des creux avant un
+rebond (usage options).
 
 Ce n'est **pas** un conseiller financier : une forte baisse peut signaler une opportunité comme un
 problème réel ("falling knife"). Le dashboard présente des données factuelles, jamais des
@@ -51,7 +52,7 @@ avec le poste local.
 
 1. [supabase.com](https://supabase.com) → New project.
 2. Une fois créé : **SQL Editor** → coller et exécuter, **dans l'ordre**, le contenu de chaque
-   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0007).
+   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0008).
 3. **Project Settings → API** : noter l'**URL du projet** et la clé **`anon` `public`** (pour le
    front) et la clé **`service_role`** (pour l'ingestion — à garder secrète, jamais dans un
    fichier du repo).
@@ -98,7 +99,8 @@ peupler `daily_closes` d'un coup, `yfinance` fournissant aussi l'historique pass
 3. Peut être lancé n'importe quel jour (y compris un week-end) : une fenêtre explicite ignore la
    vérification "jour de bourse", contrairement au run quotidien normal.
 4. Vérifier dans Supabase (**Table Editor**) que `daily_closes` et `metrics` se remplissent, avec
-   `metrics.today_change_pct` / `week_change_pct` / `month_change_pct` renseignés.
+   `metrics.today_change_pct` / `week_change_pct` / `month_change_pct` / `drawdown_20d_pct`
+   renseignés.
 
 Les runs suivants (cron quotidien, ou `workflow_dispatch` sans changer `period`) utilisent la
 valeur par défaut `5d` : une petite fenêtre glissante qui rattrape automatiquement un jour de cron
