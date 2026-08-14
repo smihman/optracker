@@ -60,9 +60,17 @@ function compareRows(a, b, key, dir) {
   return dir === "asc" ? cmp : -cmp;
 }
 
+function SpinnerIcon({ className }) {
+  return html`
+    <svg class=${"animate-spin " + (className ?? "")} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.25" stroke-width="2.5" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+    </svg>
+  `;
+}
+
 function SortableTh({ label, sortKey, align, tableSort, onSort, hideOnMobile }) {
   const active = tableSort.key === sortKey;
-  const arrow = active ? (tableSort.dir === "asc" ? " ▲" : " ▼") : "";
   return html`
     <th
       class=${"px-2 sm:px-3 py-2.5 cursor-pointer select-none whitespace-nowrap text-xs uppercase tracking-wide font-medium hover:text-app-text transition-colors " +
@@ -71,7 +79,12 @@ function SortableTh({ label, sortKey, align, tableSort, onSort, hideOnMobile }) 
       (hideOnMobile ? " hidden sm:table-cell" : "")}
       onClick=${() => onSort(sortKey)}
     >
-      ${label}${arrow}
+      ${label}
+      <span
+        class=${"inline-block transition-all duration-200 ease-out ml-0.5 " +
+        (active ? "opacity-100" : "opacity-0 -translate-y-0.5") +
+        (active && tableSort.dir === "desc" ? " rotate-180" : "")}
+        >▲</span>
     </th>
   `;
 }
@@ -88,6 +101,45 @@ function DrawdownText({ value }) {
 
 function DrawdownCell({ value }) {
   return html`<td class="px-2 sm:px-3 py-3 text-right"><${DrawdownText} value=${value} /></td>`;
+}
+
+function TableSkeleton() {
+  const rows = Array.from({ length: 8 });
+  return html`
+    <div class="animate-fade-in">
+      ${rows.map(
+        (_, i) => html`
+          <div class="flex items-center gap-3 px-2 sm:px-3 py-3 border-b border-app-border/60 animate-pulse">
+            <div class="flex-1 space-y-1.5">
+              <div class="h-3 w-16 rounded bg-app-surface"></div>
+              <div class="h-2.5 w-24 rounded bg-app-surface/70"></div>
+            </div>
+            <div class="h-3 w-12 rounded bg-app-surface hidden sm:block"></div>
+            <div class="h-3 w-10 rounded bg-app-surface"></div>
+            <div class="h-3 w-10 rounded bg-app-surface"></div>
+            <div class="h-3 w-10 rounded bg-app-surface"></div>
+          </div>
+        `
+      )}
+    </div>
+  `;
+}
+
+function Top10Skeleton() {
+  const cards = Array.from({ length: 5 });
+  return html`
+    <div class="flex gap-2.5 overflow-hidden -mx-4 px-4 sm:mx-0 sm:px-0">
+      ${cards.map(
+        () => html`
+          <div class="flex-shrink-0 w-32 sm:w-36 bg-app-surface border border-app-border rounded-2xl p-3 animate-pulse">
+            <div class="h-3.5 w-12 rounded bg-app-border mb-3"></div>
+            <div class="h-5 w-16 rounded bg-app-border mb-2"></div>
+            <div class="h-2.5 w-20 rounded bg-app-border/70"></div>
+          </div>
+        `
+      )}
+    </div>
+  `;
 }
 
 function SymbolDetail({ symbol, todayChangePct, onClose }) {
@@ -147,7 +199,7 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
         ],
       },
       options: {
-        animation: false,
+        animation: { duration: 500, easing: "easeOutQuart" },
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
@@ -166,9 +218,9 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
   const last = points[points.length - 1];
 
   return html`
-    <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4" onClick=${onClose}>
+    <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 animate-fade-in" onClick=${onClose}>
       <div
-        class="bg-app-surface border border-app-border rounded-2xl shadow-2xl w-full max-w-2xl p-4 sm:p-5 max-h-[90vh] overflow-y-auto"
+        class="bg-app-surface border border-app-border rounded-2xl shadow-2xl w-full max-w-2xl p-4 sm:p-5 max-h-[90vh] overflow-y-auto animate-scale-in"
         onClick=${(e) => e.stopPropagation()}
       >
         <div class="flex items-start justify-between mb-1">
@@ -179,10 +231,18 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
               <${DrawdownText} value=${todayChangePct} />
             </div>
           </div>
-          <button class="text-app-muted hover:text-app-text text-lg leading-none px-1" onClick=${onClose}>✕</button>
+          <button
+            class="text-app-muted hover:text-app-text text-lg leading-none px-1 py-1 rounded-full active:scale-90 transition-transform"
+            onClick=${onClose}
+          >
+            ✕
+          </button>
         </div>
         <p class="text-xs text-app-muted mb-4">6 derniers mois</p>
-        ${loading && html`<div class="text-sm text-app-muted">Chargement…</div>`}
+        ${loading &&
+        html`<div class="h-56 sm:h-64 flex items-center justify-center">
+          <${SpinnerIcon} className="w-6 h-6 text-app-muted" />
+        </div>`}
         ${!loading &&
         points.length === 0 &&
         html`<div class="text-sm text-app-muted">Pas de données récentes.</div>`}
@@ -194,19 +254,26 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
   `;
 }
 
-function Top10Panel({ rows, metric, onMetricChange, onSelect }) {
-  const metricLabel = METRICS.find((m) => m.key === metric)?.label ?? "";
+function Top10Panel({ rows, loading, metric, onMetricChange, onSelect }) {
+  const activeIndex = METRICS.findIndex((m) => m.key === metric);
+  const metricLabel = METRICS[activeIndex]?.label ?? "";
+
   return html`
     <div class="mb-6">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-xs font-semibold text-app-muted uppercase tracking-wide">
           Top 10 des plus fortes baisses — ${metricLabel}
         </h2>
-        <div class="flex rounded-full border border-app-border overflow-hidden text-xs">
+        <div class="relative flex rounded-full border border-app-border p-0.5 text-xs">
+          <div
+            class="absolute top-0.5 bottom-0.5 rounded-full bg-app-text transition-all duration-200 ease-out"
+            style=${{ left: `${activeIndex * (100 / METRICS.length)}%`, width: `${100 / METRICS.length}%` }}
+          ></div>
           ${METRICS.map(
             (m) => html`
               <button
-                class=${"px-2.5 py-1 " + (metric === m.key ? "bg-app-text text-app-bg" : "text-app-muted hover:text-app-text")}
+                class=${"relative z-10 px-2.5 py-1 rounded-full transition-colors duration-200 " +
+                (metric === m.key ? "text-app-bg" : "text-app-muted hover:text-app-text")}
                 onClick=${() => onMetricChange(m.key)}
               >
                 ${m.label}
@@ -215,14 +282,17 @@ function Top10Panel({ rows, metric, onMetricChange, onSelect }) {
           )}
         </div>
       </div>
-      ${rows.length === 0
+      ${loading && rows.length === 0
+        ? html`<${Top10Skeleton} />`
+        : rows.length === 0
         ? html`<p class="text-sm text-app-muted">Pas encore de données.</p>`
         : html`
             <div class="flex gap-2.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               ${rows.map(
                 (r, i) => html`
                   <button
-                    class="flex-shrink-0 w-32 sm:w-36 text-left bg-app-surface border border-app-border rounded-2xl p-3 hover:border-app-muted/60 transition-colors"
+                    class="flex-shrink-0 w-32 sm:w-36 text-left bg-app-surface border border-app-border rounded-2xl p-3 hover:border-app-muted/60 active:scale-95 transition-all duration-150 animate-fade-in-up"
+                    style=${{ animationDelay: `${i * 35}ms` }}
                     onClick=${() => onSelect(r.symbol)}
                   >
                     <div class="flex items-center justify-between mb-1.5">
@@ -324,40 +394,48 @@ function App() {
   );
 
   const selectedRow = selected ? rows.find((r) => r.symbol === selected) : null;
+  const showSkeleton = loading && rows.length === 0;
 
   return html`
     <div class="max-w-6xl mx-auto p-4">
-      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 animate-fade-in-up">
         <div class="flex items-center gap-2.5">
           <img src="./logo.png" alt="" class="w-7 h-7 invert" />
           <div>
             <h1 class="text-2xl font-bold tracking-tight text-app-text">S&P 500</h1>
-            <p class="text-sm text-app-muted">Vs ouverture / semaine / mois — recherche perso, pas un conseil.</p>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
           <span class="text-app-muted whitespace-nowrap">Clôture du ${formatCloseDate(lastCloseDate)}</span>
           <button
-            class="px-3 py-1.5 rounded-full border border-app-border text-app-text hover:bg-app-surface transition-colors whitespace-nowrap"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-app-border text-app-text hover:bg-app-surface active:scale-95 transition-all duration-150 whitespace-nowrap disabled:opacity-60"
             onClick=${load}
+            disabled=${loading}
           >
+            ${loading && html`<${SpinnerIcon} className="w-3.5 h-3.5" />`}
             Rafraîchir
           </button>
         </div>
       </header>
 
-      <${Top10Panel} rows=${top10} metric=${top10Metric} onMetricChange=${setTop10Metric} onSelect=${setSelected} />
+      <${Top10Panel}
+        rows=${top10}
+        loading=${loading}
+        metric=${top10Metric}
+        onMetricChange=${setTop10Metric}
+        onSelect=${setSelected}
+      />
 
       <div class="flex flex-wrap items-center gap-2 mb-4">
         <input
           type="search"
           placeholder="Rechercher un symbole ou un nom…"
-          class="bg-app-surface border border-app-border rounded-full px-4 py-2 text-sm text-app-text placeholder-app-muted w-full sm:w-auto sm:flex-1 sm:min-w-[200px] focus:outline-none focus:border-app-muted"
+          class="bg-app-surface border border-app-border rounded-full px-4 py-2 text-sm text-app-text placeholder-app-muted w-full sm:w-auto sm:flex-1 sm:min-w-[200px] transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
           value=${search}
           onInput=${(e) => setSearch(e.target.value)}
         />
         <select
-          class="bg-app-surface border border-app-border rounded-full px-3 py-2 text-sm text-app-text flex-1 sm:flex-none focus:outline-none focus:border-app-muted"
+          class="bg-app-surface border border-app-border rounded-full px-3 py-2 text-sm text-app-text flex-1 sm:flex-none transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
           value=${sector}
           onChange=${(e) => setSector(e.target.value)}
         >
@@ -365,12 +443,12 @@ function App() {
         </select>
       </div>
 
-      ${error && html`<div class="mb-3 text-sm text-neg">Erreur de chargement : ${error}</div>`}
-      ${loading && html`<div class="text-sm text-app-muted">Chargement…</div>`}
-      ${!loading &&
+      ${error && html`<div class="mb-3 text-sm text-neg animate-fade-in">Erreur de chargement : ${error}</div>`}
+      ${showSkeleton && html`<${TableSkeleton} />`}
+      ${!showSkeleton &&
       !error &&
       html`
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto animate-fade-in">
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-app-border">
@@ -410,7 +488,10 @@ function App() {
             <tbody class="divide-y divide-app-border/60">
               ${visibleRows.map(
                 (r) => html`
-                  <tr class="hover:bg-app-surface/60 cursor-pointer transition-colors" onClick=${() => setSelected(r.symbol)}>
+                  <tr
+                    class="group border-l-2 border-l-transparent hover:border-l-app-text/40 hover:bg-app-surface/60 active:bg-app-surface cursor-pointer transition-all duration-150"
+                    onClick=${() => setSelected(r.symbol)}
+                  >
                     <td class="px-2 sm:px-3 py-3">
                       <div class="font-semibold text-app-text">${r.symbol}</div>
                       <div class="text-xs text-app-muted truncate max-w-[140px] sm:max-w-none">${r.name}</div>
@@ -441,7 +522,7 @@ function App() {
       />`}
 
       <footer class="mt-8 text-xs text-app-muted">
-        <a href="./admin.html" class="underline hover:text-app-text">Administration</a>
+        <a href="./admin.html" class="underline hover:text-app-text transition-colors">Administration</a>
       </footer>
     </div>
   `;

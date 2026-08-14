@@ -26,10 +26,49 @@
               pos: "#30d158",
               neg: "#ff453a",
             },
+            keyframes: {
+              fadeIn: {
+                "0%": { opacity: "0" },
+                "100%": { opacity: "1" },
+              },
+              fadeInUp: {
+                "0%": { opacity: "0", transform: "translateY(6px)" },
+                "100%": { opacity: "1", transform: "translateY(0)" },
+              },
+              scaleIn: {
+                "0%": { opacity: "0", transform: "scale(0.96)" },
+                "100%": { opacity: "1", transform: "scale(1)" },
+              },
+            },
+            animation: {
+              "fade-in": "fadeIn 0.25s ease-out both",
+              "fade-in-up": "fadeInUp 0.35s ease-out both",
+              "scale-in": "scaleIn 0.2s ease-out both",
+            },
           },
         },
       };
     </script>
+    <style>
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2c2c2e;
+        border-radius: 999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #3a3a3c;
+      }
+      * {
+        scrollbar-color: #2c2c2e transparent;
+        -webkit-tap-highlight-color: transparent;
+      }
+    </style>
   </head>
   <body class="bg-app-bg text-app-text min-h-screen">
     <div id="app"></div>

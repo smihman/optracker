@@ -13,6 +13,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // manuellement une seule fois : Supabase Dashboard > Authentication >
 // Users > Add user. Pas d'inscription publique exposée ici.
 
+function SpinnerIcon({ className }) {
+  return html`
+    <svg class=${"animate-spin " + (className ?? "")} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.25" stroke-width="2.5" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+    </svg>
+  `;
+}
+
 function LoginForm({ onLoggedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,13 +43,13 @@ function LoginForm({ onLoggedIn }) {
 
   return html`
     <form
-      class="max-w-sm mx-auto mt-12 sm:mt-24 p-5 sm:p-6 bg-app-surface border border-app-border rounded-2xl"
+      class="max-w-sm mx-auto mt-12 sm:mt-24 p-5 sm:p-6 bg-app-surface border border-app-border rounded-2xl animate-scale-in"
       onSubmit=${submit}
     >
       <h1 class="text-lg font-bold text-app-text mb-4">Administration</h1>
       <label class="block text-sm text-app-muted mb-1">Email</label>
       <input
-        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-3 text-app-text focus:outline-none focus:border-app-muted"
+        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-3 text-app-text transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
         type="email"
         value=${email}
         onInput=${(e) => setEmail(e.target.value)}
@@ -48,23 +57,30 @@ function LoginForm({ onLoggedIn }) {
       />
       <label class="block text-sm text-app-muted mb-1">Mot de passe</label>
       <input
-        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-4 text-app-text focus:outline-none focus:border-app-muted"
+        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-4 text-app-text transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
         type="password"
         value=${password}
         onInput=${(e) => setPassword(e.target.value)}
         required
       />
-      ${error && html`<div class="text-sm text-neg mb-3">${error}</div>`}
-      <button class="w-full bg-app-text text-app-bg font-semibold rounded-lg py-2 disabled:opacity-50" disabled=${busy}>
+      ${error && html`<div class="text-sm text-neg mb-3 animate-fade-in">${error}</div>`}
+      <button
+        class="w-full flex items-center justify-center gap-2 bg-app-text text-app-bg font-semibold rounded-lg py-2 active:scale-[0.98] transition-transform disabled:opacity-50"
+        disabled=${busy}
+      >
+        ${busy && html`<${SpinnerIcon} className="w-4 h-4" />`}
         ${busy ? "Connexion…" : "Se connecter"}
       </button>
     </form>
   `;
 }
 
-function StatCard({ label, value }) {
+function StatCard({ label, value, delay }) {
   return html`
-    <div class="bg-app-surface border border-app-border rounded-2xl p-3">
+    <div
+      class="bg-app-surface border border-app-border rounded-2xl p-3 animate-fade-in-up"
+      style=${{ animationDelay: `${delay}ms` }}
+    >
       <div class="text-xs text-app-muted">${label}</div>
       <div class="text-lg font-bold text-app-text tabular-nums">${value}</div>
     </div>
@@ -80,11 +96,11 @@ function TickersPanel({ tickers, onToggle }) {
   );
 
   return html`
-    <div class="bg-app-surface border border-app-border rounded-2xl p-4">
+    <div class="bg-app-surface border border-app-border rounded-2xl p-4 animate-fade-in-up" style=${{ animationDelay: "120ms" }}>
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <h2 class="font-semibold text-app-text">Tickers (${tickers.length})</h2>
         <input
-          class="bg-app-bg border border-app-border rounded-full px-3 py-1 text-sm text-app-text focus:outline-none focus:border-app-muted"
+          class="bg-app-bg border border-app-border rounded-full px-3 py-1 text-sm text-app-text transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
           placeholder="Filtrer…"
           value=${filter}
           onInput=${(e) => setFilter(e.target.value)}
@@ -103,13 +119,13 @@ function TickersPanel({ tickers, onToggle }) {
           <tbody class="divide-y divide-app-border/60">
             ${visible.map(
               (t) => html`
-                <tr>
+                <tr class="hover:bg-app-bg/60 transition-colors">
                   <td class="py-1.5 pr-2 font-medium text-app-text whitespace-nowrap">${t.symbol}</td>
                   <td class="py-1.5 pr-2 text-app-muted max-w-[140px] sm:max-w-none truncate">${t.name}</td>
                   <td class="py-1.5 pr-2 text-app-muted">${t.is_active ? "Oui" : "Non"}</td>
                   <td class="py-1.5 text-right">
                     <button
-                      class="text-xs underline text-app-muted hover:text-app-text whitespace-nowrap"
+                      class="text-xs underline text-app-muted hover:text-app-text active:scale-95 transition-all whitespace-nowrap"
                       onClick=${() => onToggle(t.symbol, !t.is_active)}
                     >
                       ${t.is_active ? "Désactiver" : "Activer"}
@@ -176,7 +192,9 @@ function AdminApp() {
   }
 
   if (checkingSession) {
-    return html`<div class="p-6 text-sm text-app-muted">Chargement…</div>`;
+    return html`<div class="flex items-center justify-center h-screen">
+      <${SpinnerIcon} className="w-6 h-6 text-app-muted" />
+    </div>`;
   }
 
   if (!session) {
@@ -185,20 +203,22 @@ function AdminApp() {
 
   return html`
     <div class="max-w-3xl mx-auto p-4">
-      <header class="flex flex-wrap items-center justify-between gap-2 mb-6">
+      <header class="flex flex-wrap items-center justify-between gap-2 mb-6 animate-fade-in-up">
         <div class="flex items-center gap-2.5">
           <img src="./logo.png" alt="" class="w-6 h-6 invert" />
           <h1 class="text-xl font-bold text-app-text">Administration</h1>
         </div>
         <div class="flex items-center gap-3 text-sm">
-          <a href="./index.html" class="underline text-app-muted hover:text-app-text">← Dashboard</a>
-          <button class="text-app-muted hover:text-app-text" onClick=${logout}>Déconnexion</button>
+          <a href="./index.html" class="underline text-app-muted hover:text-app-text transition-colors">← Dashboard</a>
+          <button class="text-app-muted hover:text-app-text active:scale-95 transition-all" onClick=${logout}>
+            Déconnexion
+          </button>
         </div>
       </header>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        <${StatCard} label="Tickers actifs" value=${stats.activeTickers} />
-        <${StatCard} label="Lignes de clôtures" value=${stats.closeRows} />
-        <${StatCard} label="Historique depuis" value=${stats.oldestDate} />
+        <${StatCard} label="Tickers actifs" value=${stats.activeTickers} delay=${0} />
+        <${StatCard} label="Lignes de clôtures" value=${stats.closeRows} delay=${40} />
+        <${StatCard} label="Historique depuis" value=${stats.oldestDate} delay=${80} />
       </div>
       <p class="text-xs text-app-muted mb-6">
         L'historique quotidien reste léger indéfiniment (~500 lignes/jour) — aucune purge n'est
