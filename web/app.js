@@ -132,10 +132,10 @@ function DrawdownCell({ value }) {
 function TableSkeleton() {
   const rows = Array.from({ length: 8 });
   return html`
-    <div class="animate-fade-in">
+    <div class="animate-fade-in border border-app-border rounded-2xl divide-y divide-app-border/60">
       ${rows.map(
         () => html`
-          <div class="flex items-center gap-3 px-2 sm:px-3 py-3.5 border-b border-app-border/60 animate-pulse">
+          <div class="flex items-center gap-3 px-2 sm:px-3 py-3.5 animate-pulse">
             <div class="flex-1 space-y-1.5">
               <div class="h-3 w-16 rounded bg-app-surface"></div>
               <div class="h-2.5 w-24 rounded bg-app-surface/70"></div>
@@ -551,7 +551,7 @@ function App() {
         ${!showSkeleton &&
         !error &&
         html`
-          <div class="animate-fade-in">
+          <div class="animate-fade-in border border-app-border rounded-2xl">
             <table class="w-full text-sm">
               <thead class="sticky z-10 bg-app-bg" style=${{ top: `${filterBarHeight}px` }}>
                 <tr class="border-b border-app-border">
