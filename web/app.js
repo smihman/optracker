@@ -12,8 +12,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SECTORS_ALL = "Tous secteurs";
 const METRICS = [
   { key: "today_change_pct", label: "Auj.", title: "Variation depuis l'ouverture du jour" },
-  { key: "week_drawdown_pct", label: "Sem.", title: "Écart au plus-haut de la semaine en cours" },
-  { key: "month_drawdown_pct", label: "Mois", title: "Écart au plus-haut du mois en cours" },
+  { key: "week_change_pct", label: "Sem.", title: "Variation vs clôture du vendredi de la semaine dernière" },
+  { key: "month_change_pct", label: "Mois", title: "Variation vs clôture du dernier vendredi du mois dernier" },
 ];
 
 // iOS dark-mode system colors — gardées en JS pour Chart.js, qui ne
@@ -117,7 +117,7 @@ function SortableTh({ label, title, sortKey, align, tableSort, onSort, hideOnMob
 
 // Pas de fond coloré : uniquement le texte, gras, en vert/rouge — le
 // reste de l'interface reste noir/blanc/gris.
-function DrawdownText({ value }) {
+function ChangeText({ value }) {
   if (value === null || value === undefined) {
     return html`<span class="text-app-muted text-sm">—</span>`;
   }
@@ -125,8 +125,8 @@ function DrawdownText({ value }) {
   return html`<span class="font-semibold text-sm tabular-nums whitespace-nowrap ${color}">${formatPct(value)}</span>`;
 }
 
-function DrawdownCell({ value }) {
-  return html`<td class="px-2 sm:px-3 py-3.5 text-right"><${DrawdownText} value=${value} /></td>`;
+function ChangeCell({ value }) {
+  return html`<td class="px-2 sm:px-3 py-3.5 text-right"><${ChangeText} value=${value} /></td>`;
 }
 
 function TableSkeleton() {
@@ -254,7 +254,7 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
             <h2 class="text-lg font-bold text-app-text">${symbol}</h2>
             <div class="flex items-baseline gap-2 mt-1">
               ${last && html`<p class="text-3xl font-bold tabular-nums">${formatPrice(last.close)}</p>`}
-              <${DrawdownText} value=${todayChangePct} />
+              <${ChangeText} value=${todayChangePct} />
             </div>
           </div>
           <button
@@ -369,9 +369,9 @@ function App() {
   const [error, setError] = useState(null);
   const [sector, setSector] = useState(SECTORS_ALL);
   const [search, setSearch] = useState("");
-  const [top10Metric, setTop10Metric] = useState("week_drawdown_pct");
+  const [top10Metric, setTop10Metric] = useState("week_change_pct");
   const [top10Direction, setTop10Direction] = useState("down");
-  const [tableSort, setTableSort] = useState({ key: "week_drawdown_pct", dir: "asc" });
+  const [tableSort, setTableSort] = useState({ key: "week_change_pct", dir: "asc" });
   const [selected, setSelected] = useState(null);
 
   // Le header du tableau colle juste sous la barre de filtres, elle
@@ -403,9 +403,9 @@ function App() {
     const { data, error: err } = await supabase
       .from("metrics")
       .select(
-        "symbol, last_price, last_date, today_change_pct, week_drawdown_pct, month_drawdown_pct, tickers(name, sector, is_active)"
+        "symbol, last_price, last_date, today_change_pct, week_change_pct, month_change_pct, tickers(name, sector, is_active)"
       )
-      .order("week_drawdown_pct", { ascending: true });
+      .order("week_change_pct", { ascending: true });
 
     if (err) {
       setError(err.message);
@@ -422,8 +422,8 @@ function App() {
         last_price: r.last_price,
         last_date: r.last_date,
         today_change_pct: r.today_change_pct,
-        week_drawdown_pct: r.week_drawdown_pct,
-        month_drawdown_pct: r.month_drawdown_pct,
+        week_change_pct: r.week_change_pct,
+        month_change_pct: r.month_change_pct,
       }));
 
     setRows(flat);
@@ -453,9 +453,9 @@ function App() {
 
   // Le top 10 reste indépendant des filtres secteur/recherche/tri du tableau :
   // c'est une vue d'ensemble rapide, le tableau en dessous sert à creuser un
-  // sous-ensemble ou à trier par une autre colonne. "Hausses" n'a de sens
-  // strict que pour Auj. (seule métrique qui peut être positive) — pour
-  // Sem./Mois ça remonte les titres les moins loin de leur plus-haut.
+  // sous-ensemble ou à trier par une autre colonne. Les 3 métriques sont
+  // symétriques (vs ouverture / vs vendredi dernier / vs dernier vendredi du
+  // mois dernier), donc "Hausses" a un vrai sens sur les trois désormais.
   const top10 = useMemo(() => {
     const sorted = [...rows].sort((a, b) => (a[top10Metric] ?? 0) - (b[top10Metric] ?? 0));
     return top10Direction === "down" ? sorted.slice(0, 10) : sorted.slice(-10).reverse();
@@ -595,9 +595,9 @@ function App() {
                       <td class="px-2 sm:px-3 py-3.5 text-right text-app-text tabular-nums hidden sm:table-cell whitespace-nowrap">
                         ${formatPrice(r.last_price)}
                       </td>
-                      <${DrawdownCell} value=${r.today_change_pct} />
-                      <${DrawdownCell} value=${r.week_drawdown_pct} />
-                      <${DrawdownCell} value=${r.month_drawdown_pct} />
+                      <${ChangeCell} value=${r.today_change_pct} />
+                      <${ChangeCell} value=${r.week_change_pct} />
+                      <${ChangeCell} value=${r.month_change_pct} />
                     </tr>
                   `
                 )}
