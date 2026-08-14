@@ -186,7 +186,10 @@ function AdminApp() {
   return html`
     <div class="max-w-3xl mx-auto p-4">
       <header class="flex flex-wrap items-center justify-between gap-2 mb-6">
-        <h1 class="text-xl font-bold text-app-text">Administration</h1>
+        <div class="flex items-center gap-2.5">
+          <img src="./logo.png" alt="" class="w-6 h-6 invert" />
+          <h1 class="text-xl font-bold text-app-text">Administration</h1>
+        </div>
         <div class="flex items-center gap-3 text-sm">
           <a href="./index.html" class="underline text-app-muted hover:text-app-text">← Dashboard</a>
           <button class="text-app-muted hover:text-app-text" onClick=${logout}>Déconnexion</button>

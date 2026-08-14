@@ -328,9 +328,12 @@ function App() {
   return html`
     <div class="max-w-6xl mx-auto p-4">
       <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div>
-          <h1 class="text-2xl font-bold tracking-tight text-app-text">S&P 500</h1>
-          <p class="text-sm text-app-muted">Vs ouverture / semaine / mois — recherche perso, pas un conseil.</p>
+        <div class="flex items-center gap-2.5">
+          <img src="./logo.png" alt="" class="w-7 h-7 invert" />
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-app-text">S&P 500</h1>
+            <p class="text-sm text-app-muted">Vs ouverture / semaine / mois — recherche perso, pas un conseil.</p>
+          </div>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
           <span class="text-app-muted whitespace-nowrap">Clôture du ${formatCloseDate(lastCloseDate)}</span>
