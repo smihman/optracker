@@ -22,6 +22,15 @@ function SpinnerIcon({ className }) {
   `;
 }
 
+function SearchIcon({ className }) {
+  return html`
+    <svg class=${className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+      <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+  `;
+}
+
 function LoginForm({ onLoggedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,29 +52,34 @@ function LoginForm({ onLoggedIn }) {
 
   return html`
     <form
-      class="max-w-sm mx-auto mt-12 sm:mt-24 p-5 sm:p-6 bg-app-surface border border-app-border rounded-2xl animate-scale-in"
+      class="max-w-sm mx-auto mt-12 sm:mt-24 p-6 sm:p-7 bg-app-surface border border-app-border rounded-2xl animate-scale-in"
       onSubmit=${submit}
     >
-      <h1 class="text-lg font-bold text-app-text mb-4">Administration</h1>
-      <label class="block text-sm text-app-muted mb-1">Email</label>
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-app-bg border border-app-border flex items-center justify-center flex-shrink-0">
+          <img src="./logo.png" alt="" class="w-5 h-5 invert" />
+        </div>
+        <h1 class="text-lg font-bold text-app-text">Administration</h1>
+      </div>
+      <label class="block text-sm text-app-muted mb-1.5">Email</label>
       <input
-        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-3 text-app-text transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
+        class="w-full bg-app-bg border border-app-border rounded-xl px-3 py-2 mb-4 text-app-text transition-shadow focus:outline-none focus:ring-4 focus:ring-white/5 focus:border-app-muted"
         type="email"
         value=${email}
         onInput=${(e) => setEmail(e.target.value)}
         required
       />
-      <label class="block text-sm text-app-muted mb-1">Mot de passe</label>
+      <label class="block text-sm text-app-muted mb-1.5">Mot de passe</label>
       <input
-        class="w-full bg-app-bg border border-app-border rounded-lg px-2 py-1.5 mb-4 text-app-text transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
+        class="w-full bg-app-bg border border-app-border rounded-xl px-3 py-2 mb-5 text-app-text transition-shadow focus:outline-none focus:ring-4 focus:ring-white/5 focus:border-app-muted"
         type="password"
         value=${password}
         onInput=${(e) => setPassword(e.target.value)}
         required
       />
-      ${error && html`<div class="text-sm text-neg mb-3 animate-fade-in">${error}</div>`}
+      ${error && html`<div class="text-sm text-neg mb-4 animate-fade-in">${error}</div>`}
       <button
-        class="w-full flex items-center justify-center gap-2 bg-app-text text-app-bg font-semibold rounded-lg py-2 active:scale-[0.98] transition-transform disabled:opacity-50"
+        class="w-full flex items-center justify-center gap-2 bg-app-text text-app-bg font-semibold rounded-full py-2.5 active:scale-[0.98] transition-transform disabled:opacity-50"
         disabled=${busy}
       >
         ${busy && html`<${SpinnerIcon} className="w-4 h-4" />`}
@@ -78,11 +92,11 @@ function LoginForm({ onLoggedIn }) {
 function StatCard({ label, value, delay }) {
   return html`
     <div
-      class="bg-app-surface border border-app-border rounded-2xl p-3 animate-fade-in-up"
+      class="bg-app-surface border border-app-border rounded-2xl p-4 animate-fade-in-up"
       style=${{ animationDelay: `${delay}ms` }}
     >
-      <div class="text-xs text-app-muted">${label}</div>
-      <div class="text-lg font-bold text-app-text tabular-nums">${value}</div>
+      <div class="text-xs text-app-muted mb-1">${label}</div>
+      <div class="text-xl font-bold text-app-text tabular-nums">${value}</div>
     </div>
   `;
 }
@@ -96,23 +110,29 @@ function TickersPanel({ tickers, onToggle }) {
   );
 
   return html`
-    <div class="bg-app-surface border border-app-border rounded-2xl p-4 animate-fade-in-up" style=${{ animationDelay: "120ms" }}>
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+    <div
+      class="bg-app-surface border border-app-border rounded-2xl p-4 sm:p-5 animate-fade-in-up"
+      style=${{ animationDelay: "120ms" }}
+    >
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <h2 class="font-semibold text-app-text">Tickers (${tickers.length})</h2>
-        <input
-          class="bg-app-bg border border-app-border rounded-full px-3 py-1 text-sm text-app-text transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
-          placeholder="Filtrer…"
-          value=${filter}
-          onInput=${(e) => setFilter(e.target.value)}
-        />
+        <div class="relative">
+          <${SearchIcon} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-app-muted" />
+          <input
+            class="bg-app-bg border border-app-border rounded-full pl-8 pr-3 py-1.5 text-sm text-app-text transition-shadow focus:outline-none focus:ring-4 focus:ring-white/5 focus:border-app-muted"
+            placeholder="Filtrer…"
+            value=${filter}
+            onInput=${(e) => setFilter(e.target.value)}
+          />
+        </div>
       </div>
       <div class="max-h-80 overflow-y-auto overflow-x-auto text-sm">
         <table class="w-full">
           <thead class="text-xs uppercase tracking-wide text-app-muted sticky top-0 bg-app-surface">
             <tr>
-              <th class="text-left py-1.5 pr-2">Symbole</th>
-              <th class="text-left py-1.5 pr-2">Nom</th>
-              <th class="text-left py-1.5 pr-2">Actif</th>
+              <th class="text-left py-2 pr-2">Symbole</th>
+              <th class="text-left py-2 pr-2">Nom</th>
+              <th class="text-left py-2 pr-2">Actif</th>
               <th></th>
             </tr>
           </thead>
@@ -120,10 +140,10 @@ function TickersPanel({ tickers, onToggle }) {
             ${visible.map(
               (t) => html`
                 <tr class="hover:bg-app-bg/60 transition-colors">
-                  <td class="py-1.5 pr-2 font-medium text-app-text whitespace-nowrap">${t.symbol}</td>
-                  <td class="py-1.5 pr-2 text-app-muted max-w-[140px] sm:max-w-none truncate">${t.name}</td>
-                  <td class="py-1.5 pr-2 text-app-muted">${t.is_active ? "Oui" : "Non"}</td>
-                  <td class="py-1.5 text-right">
+                  <td class="py-2 pr-2 font-medium text-app-text whitespace-nowrap">${t.symbol}</td>
+                  <td class="py-2 pr-2 text-app-muted max-w-[140px] sm:max-w-none truncate">${t.name}</td>
+                  <td class="py-2 pr-2 text-app-muted">${t.is_active ? "Oui" : "Non"}</td>
+                  <td class="py-2 text-right">
                     <button
                       class="text-xs underline text-app-muted hover:text-app-text active:scale-95 transition-all whitespace-nowrap"
                       onClick=${() => onToggle(t.symbol, !t.is_active)}
@@ -202,25 +222,27 @@ function AdminApp() {
   }
 
   return html`
-    <div class="max-w-3xl mx-auto p-4">
-      <header class="flex flex-wrap items-center justify-between gap-2 mb-6 animate-fade-in-up">
-        <div class="flex items-center gap-2.5">
-          <img src="./logo.png" alt="" class="w-6 h-6 invert" />
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <header class="flex flex-wrap items-center justify-between gap-3 mb-8 animate-fade-in-up">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-app-surface border border-app-border flex items-center justify-center flex-shrink-0">
+            <img src="./logo.png" alt="" class="w-5 h-5 invert" />
+          </div>
           <h1 class="text-xl font-bold text-app-text">Administration</h1>
         </div>
-        <div class="flex items-center gap-3 text-sm">
+        <div class="flex items-center gap-4 text-sm">
           <a href="./index.html" class="underline text-app-muted hover:text-app-text transition-colors">← Dashboard</a>
           <button class="text-app-muted hover:text-app-text active:scale-95 transition-all" onClick=${logout}>
             Déconnexion
           </button>
         </div>
       </header>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <${StatCard} label="Tickers actifs" value=${stats.activeTickers} delay=${0} />
         <${StatCard} label="Lignes de clôtures" value=${stats.closeRows} delay=${40} />
         <${StatCard} label="Historique depuis" value=${stats.oldestDate} delay=${80} />
       </div>
-      <p class="text-xs text-app-muted mb-6">
+      <p class="text-xs text-app-muted mb-8">
         L'historique quotidien reste léger indéfiniment (~500 lignes/jour) — aucune purge n'est
         nécessaire ici, contrairement à l'ancien relevé intraday.
       </p>

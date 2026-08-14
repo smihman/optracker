@@ -11,9 +11,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const SECTORS_ALL = "Tous secteurs";
 const METRICS = [
-  { key: "today_change_pct", label: "Auj." },
-  { key: "week_drawdown_pct", label: "Sem." },
-  { key: "month_drawdown_pct", label: "Mois" },
+  { key: "today_change_pct", label: "Auj.", title: "Variation depuis l'ouverture du jour" },
+  { key: "week_drawdown_pct", label: "Sem.", title: "Écart au plus-haut de la semaine en cours" },
+  { key: "month_drawdown_pct", label: "Mois", title: "Écart au plus-haut du mois en cours" },
 ];
 
 // iOS dark-mode system colors — gardées en JS pour Chart.js, qui ne
@@ -69,11 +69,29 @@ function SpinnerIcon({ className }) {
   `;
 }
 
-function SortableTh({ label, sortKey, align, tableSort, onSort, hideOnMobile }) {
+function SearchIcon({ className }) {
+  return html`
+    <svg class=${className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+      <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+  `;
+}
+
+function ChevronIcon({ className }) {
+  return html`
+    <svg class=${className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  `;
+}
+
+function SortableTh({ label, title, sortKey, align, tableSort, onSort, hideOnMobile }) {
   const active = tableSort.key === sortKey;
   return html`
     <th
-      class=${"px-2 sm:px-3 py-2.5 cursor-pointer select-none whitespace-nowrap text-xs uppercase tracking-wide font-medium hover:text-app-text transition-colors " +
+      title=${title}
+      class=${"px-2 sm:px-3 py-3 cursor-pointer select-none whitespace-nowrap text-xs uppercase tracking-wide font-medium hover:text-app-text transition-colors " +
       (align === "right" ? "text-right" : "text-left") +
       (active ? " text-app-text" : " text-app-muted") +
       (hideOnMobile ? " hidden sm:table-cell" : "")}
@@ -100,7 +118,7 @@ function DrawdownText({ value }) {
 }
 
 function DrawdownCell({ value }) {
-  return html`<td class="px-2 sm:px-3 py-3 text-right"><${DrawdownText} value=${value} /></td>`;
+  return html`<td class="px-2 sm:px-3 py-3.5 text-right"><${DrawdownText} value=${value} /></td>`;
 }
 
 function TableSkeleton() {
@@ -108,8 +126,8 @@ function TableSkeleton() {
   return html`
     <div class="animate-fade-in">
       ${rows.map(
-        (_, i) => html`
-          <div class="flex items-center gap-3 px-2 sm:px-3 py-3 border-b border-app-border/60 animate-pulse">
+        () => html`
+          <div class="flex items-center gap-3 px-2 sm:px-3 py-3.5 border-b border-app-border/60 animate-pulse">
             <div class="flex-1 space-y-1.5">
               <div class="h-3 w-16 rounded bg-app-surface"></div>
               <div class="h-2.5 w-24 rounded bg-app-surface/70"></div>
@@ -128,10 +146,10 @@ function TableSkeleton() {
 function Top10Skeleton() {
   const cards = Array.from({ length: 5 });
   return html`
-    <div class="flex gap-2.5 overflow-hidden -mx-4 px-4 sm:mx-0 sm:px-0">
+    <div class="flex gap-3 overflow-hidden -mx-4 px-4 sm:mx-0 sm:px-0">
       ${cards.map(
         () => html`
-          <div class="flex-shrink-0 w-32 sm:w-36 bg-app-surface border border-app-border rounded-2xl p-3 animate-pulse">
+          <div class="flex-shrink-0 w-32 sm:w-36 bg-app-surface border border-app-border rounded-2xl p-4 animate-pulse">
             <div class="h-3.5 w-12 rounded bg-app-border mb-3"></div>
             <div class="h-5 w-16 rounded bg-app-border mb-2"></div>
             <div class="h-2.5 w-20 rounded bg-app-border/70"></div>
@@ -220,25 +238,25 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
   return html`
     <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 animate-fade-in" onClick=${onClose}>
       <div
-        class="bg-app-surface border border-app-border rounded-2xl shadow-2xl w-full max-w-2xl p-4 sm:p-5 max-h-[90vh] overflow-y-auto animate-scale-in"
+        class="bg-app-surface border border-app-border rounded-2xl shadow-2xl w-full max-w-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto animate-scale-in"
         onClick=${(e) => e.stopPropagation()}
       >
         <div class="flex items-start justify-between mb-1">
           <div>
             <h2 class="text-lg font-bold text-app-text">${symbol}</h2>
-            <div class="flex items-baseline gap-2 mt-0.5">
-              ${last && html`<p class="text-2xl font-bold tabular-nums">${formatPrice(last.close)}</p>`}
+            <div class="flex items-baseline gap-2 mt-1">
+              ${last && html`<p class="text-3xl font-bold tabular-nums">${formatPrice(last.close)}</p>`}
               <${DrawdownText} value=${todayChangePct} />
             </div>
           </div>
           <button
-            class="text-app-muted hover:text-app-text text-lg leading-none px-1 py-1 rounded-full active:scale-90 transition-transform"
+            class="text-app-muted hover:text-app-text text-lg leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-app-border/60 active:scale-90 transition-all"
             onClick=${onClose}
           >
             ✕
           </button>
         </div>
-        <p class="text-xs text-app-muted mb-4">6 derniers mois</p>
+        <p class="text-xs text-app-muted mb-5">6 derniers mois</p>
         ${loading &&
         html`<div class="h-56 sm:h-64 flex items-center justify-center">
           <${SpinnerIcon} className="w-6 h-6 text-app-muted" />
@@ -259,20 +277,21 @@ function Top10Panel({ rows, loading, metric, onMetricChange, onSelect }) {
   const metricLabel = METRICS[activeIndex]?.label ?? "";
 
   return html`
-    <div class="mb-6">
-      <div class="flex items-center justify-between mb-2">
+    <section>
+      <div class="flex items-center justify-between mb-3">
         <h2 class="text-xs font-semibold text-app-muted uppercase tracking-wide">
           Top 10 des plus fortes baisses — ${metricLabel}
         </h2>
         <div class="relative flex rounded-full border border-app-border p-0.5 text-xs">
           <div
-            class="absolute top-0.5 bottom-0.5 rounded-full bg-app-text transition-all duration-200 ease-out"
+            class="absolute top-0.5 bottom-0.5 rounded-full bg-app-text transition-all duration-300 ease-juicy"
             style=${{ left: `${activeIndex * (100 / METRICS.length)}%`, width: `${100 / METRICS.length}%` }}
           ></div>
           ${METRICS.map(
             (m) => html`
               <button
-                class=${"relative z-10 px-2.5 py-1 rounded-full transition-colors duration-200 " +
+                title=${m.title}
+                class=${"relative z-10 px-3 py-1.5 rounded-full transition-colors duration-200 " +
                 (metric === m.key ? "text-app-bg" : "text-app-muted hover:text-app-text")}
                 onClick=${() => onMetricChange(m.key)}
               >
@@ -287,28 +306,28 @@ function Top10Panel({ rows, loading, metric, onMetricChange, onSelect }) {
         : rows.length === 0
         ? html`<p class="text-sm text-app-muted">Pas encore de données.</p>`
         : html`
-            <div class="flex gap-2.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div class="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               ${rows.map(
                 (r, i) => html`
                   <button
-                    class="flex-shrink-0 w-32 sm:w-36 text-left bg-app-surface border border-app-border rounded-2xl p-3 hover:border-app-muted/60 active:scale-95 transition-all duration-150 animate-fade-in-up"
+                    class="flex-shrink-0 w-32 sm:w-36 text-left bg-app-surface border border-app-border rounded-2xl p-4 hover:border-app-muted/60 hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-8px_rgba(255,255,255,0.08)] active:scale-95 active:translate-y-0 transition-all duration-200 ease-juicy animate-fade-in-up"
                     style=${{ animationDelay: `${i * 35}ms` }}
                     onClick=${() => onSelect(r.symbol)}
                   >
-                    <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center justify-between mb-2">
                       <span class="font-bold text-sm text-app-text">${r.symbol}</span>
                       <span class="text-[10px] text-app-muted">#${i + 1}</span>
                     </div>
                     <div class="text-lg font-bold tabular-nums ${r[metric] < 0 ? "text-neg" : r[metric] > 0 ? "text-pos" : "text-app-muted"}">
                       ${formatPct(r[metric])}
                     </div>
-                    <div class="text-xs text-app-muted truncate mt-0.5">${r.name}</div>
+                    <div class="text-xs text-app-muted truncate mt-1">${r.name}</div>
                   </button>
                 `
               )}
             </div>
           `}
-    </div>
+    </section>
   `;
 }
 
@@ -395,20 +414,24 @@ function App() {
 
   const selectedRow = selected ? rows.find((r) => r.symbol === selected) : null;
   const showSkeleton = loading && rows.length === 0;
+  const isFiltered = sector !== SECTORS_ALL || search.trim() !== "";
 
   return html`
-    <div class="max-w-6xl mx-auto p-4">
-      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 animate-fade-in-up">
-        <div class="flex items-center gap-2.5">
-          <img src="./logo.png" alt="" class="w-7 h-7 invert" />
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-app-surface border border-app-border flex items-center justify-center flex-shrink-0">
+            <img src="./logo.png" alt="" class="w-5 h-5 invert" />
+          </div>
           <div>
-            <h1 class="text-2xl font-bold tracking-tight text-app-text">S&P 500</h1>
+            <h1 class="text-2xl font-bold tracking-tight text-app-text leading-tight">S&P 500</h1>
+            <p class="text-sm text-app-muted">Vs ouverture, semaine et mois — outil de recherche perso.</p>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
           <span class="text-app-muted whitespace-nowrap">Clôture du ${formatCloseDate(lastCloseDate)}</span>
           <button
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-app-border text-app-text hover:bg-app-surface active:scale-95 transition-all duration-150 whitespace-nowrap disabled:opacity-60"
+            class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-app-border text-app-text hover:bg-app-surface active:scale-95 transition-all duration-150 whitespace-nowrap disabled:opacity-60"
             onClick=${load}
             disabled=${loading}
           >
@@ -426,94 +449,109 @@ function App() {
         onSelect=${setSelected}
       />
 
-      <div class="flex flex-wrap items-center gap-2 mb-4">
-        <input
-          type="search"
-          placeholder="Rechercher un symbole ou un nom…"
-          class="bg-app-surface border border-app-border rounded-full px-4 py-2 text-sm text-app-text placeholder-app-muted w-full sm:w-auto sm:flex-1 sm:min-w-[200px] transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
-          value=${search}
-          onInput=${(e) => setSearch(e.target.value)}
-        />
-        <select
-          class="bg-app-surface border border-app-border rounded-full px-3 py-2 text-sm text-app-text flex-1 sm:flex-none transition-shadow focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-app-muted"
-          value=${sector}
-          onChange=${(e) => setSector(e.target.value)}
-        >
-          ${sectors.map((s) => html`<option value=${s}>${s}</option>`)}
-        </select>
+      <div class="border-t border-app-border/60 mt-8 pt-8">
+        <div class="flex flex-wrap items-center gap-2.5 mb-4">
+          <div class="relative w-full sm:w-auto sm:flex-1 sm:min-w-[220px]">
+            <${SearchIcon} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-app-muted" />
+            <input
+              type="text"
+              placeholder="Rechercher un symbole ou un nom…"
+              class="w-full bg-app-surface border border-app-border rounded-full pl-10 pr-9 py-2.5 text-sm text-app-text placeholder-app-muted transition-shadow focus:outline-none focus:ring-4 focus:ring-white/5 focus:border-app-muted"
+              value=${search}
+              onInput=${(e) => setSearch(e.target.value)}
+            />
+            ${search &&
+            html`<button
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-app-muted hover:text-app-text active:scale-90 transition-transform"
+              onClick=${() => setSearch("")}
+              aria-label="Effacer la recherche"
+            >
+              ✕
+            </button>`}
+          </div>
+          <div class="relative flex-1 sm:flex-none">
+            <select
+              class="appearance-none w-full bg-app-surface border border-app-border rounded-full pl-4 pr-9 py-2.5 text-sm text-app-text transition-shadow focus:outline-none focus:ring-4 focus:ring-white/5 focus:border-app-muted"
+              value=${sector}
+              onChange=${(e) => setSector(e.target.value)}
+            >
+              ${sectors.map((s) => html`<option value=${s}>${s}</option>`)}
+            </select>
+            <${ChevronIcon} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-app-muted" />
+          </div>
+        </div>
+
+        <div class="flex items-baseline justify-between mb-3">
+          <h2 class="text-xs font-semibold text-app-muted uppercase tracking-wide">
+            ${isFiltered ? "Résultats" : "Tous les titres"}
+          </h2>
+          ${!showSkeleton && html`<span class="text-xs text-app-muted">${visibleRows.length}</span>`}
+        </div>
+
+        ${error && html`<div class="mb-3 text-sm text-neg animate-fade-in">Erreur de chargement : ${error}</div>`}
+        ${showSkeleton && html`<${TableSkeleton} />`}
+        ${!showSkeleton &&
+        !error &&
+        html`
+          <div class="overflow-x-auto animate-fade-in">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-app-bg z-10">
+                <tr class="border-b border-app-border">
+                  <${SortableTh} label="Titre" sortKey="symbol" tableSort=${tableSort} onSort=${toggleSort} />
+                  <${SortableTh} label="Secteur" sortKey="sector" hideOnMobile tableSort=${tableSort} onSort=${toggleSort} />
+                  <${SortableTh}
+                    label="Dernier"
+                    sortKey="last_price"
+                    align="right"
+                    hideOnMobile
+                    tableSort=${tableSort}
+                    onSort=${toggleSort}
+                  />
+                  ${METRICS.map(
+                    (m) => html`
+                      <${SortableTh}
+                        label=${m.label}
+                        title=${m.title}
+                        sortKey=${m.key}
+                        align="right"
+                        tableSort=${tableSort}
+                        onSort=${toggleSort}
+                      />
+                    `
+                  )}
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-app-border/60">
+                ${visibleRows.map(
+                  (r) => html`
+                    <tr
+                      class="border-l-2 border-l-transparent hover:border-l-app-text/40 hover:bg-app-surface/60 active:bg-app-surface cursor-pointer transition-all duration-150"
+                      onClick=${() => setSelected(r.symbol)}
+                    >
+                      <td class="px-2 sm:px-3 py-3.5">
+                        <div class="font-semibold text-app-text">${r.symbol}</div>
+                        <div class="text-xs text-app-muted truncate max-w-[140px] sm:max-w-none">${r.name}</div>
+                      </td>
+                      <td class="px-2 sm:px-3 py-3.5 text-app-muted hidden sm:table-cell">${r.sector}</td>
+                      <td class="px-2 sm:px-3 py-3.5 text-right text-app-text tabular-nums hidden sm:table-cell whitespace-nowrap">
+                        ${formatPrice(r.last_price)}
+                      </td>
+                      <${DrawdownCell} value=${r.today_change_pct} />
+                      <${DrawdownCell} value=${r.week_drawdown_pct} />
+                      <${DrawdownCell} value=${r.month_drawdown_pct} />
+                    </tr>
+                  `
+                )}
+              </tbody>
+            </table>
+            ${visibleRows.length === 0 &&
+            html`<div class="p-8 text-center text-sm text-app-muted">
+              ${rows.length === 0 ? "Aucune donnée pour l'instant." : "Aucun résultat pour ce filtre."}
+            </div>`}
+          </div>
+        `}
       </div>
 
-      ${error && html`<div class="mb-3 text-sm text-neg animate-fade-in">Erreur de chargement : ${error}</div>`}
-      ${showSkeleton && html`<${TableSkeleton} />`}
-      ${!showSkeleton &&
-      !error &&
-      html`
-        <div class="overflow-x-auto animate-fade-in">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-app-border">
-                <${SortableTh} label="Titre" sortKey="symbol" tableSort=${tableSort} onSort=${toggleSort} />
-                <${SortableTh} label="Secteur" sortKey="sector" hideOnMobile tableSort=${tableSort} onSort=${toggleSort} />
-                <${SortableTh}
-                  label="Dernier"
-                  sortKey="last_price"
-                  align="right"
-                  hideOnMobile
-                  tableSort=${tableSort}
-                  onSort=${toggleSort}
-                />
-                <${SortableTh}
-                  label="Auj."
-                  sortKey="today_change_pct"
-                  align="right"
-                  tableSort=${tableSort}
-                  onSort=${toggleSort}
-                />
-                <${SortableTh}
-                  label="Sem."
-                  sortKey="week_drawdown_pct"
-                  align="right"
-                  tableSort=${tableSort}
-                  onSort=${toggleSort}
-                />
-                <${SortableTh}
-                  label="Mois"
-                  sortKey="month_drawdown_pct"
-                  align="right"
-                  tableSort=${tableSort}
-                  onSort=${toggleSort}
-                />
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-app-border/60">
-              ${visibleRows.map(
-                (r) => html`
-                  <tr
-                    class="group border-l-2 border-l-transparent hover:border-l-app-text/40 hover:bg-app-surface/60 active:bg-app-surface cursor-pointer transition-all duration-150"
-                    onClick=${() => setSelected(r.symbol)}
-                  >
-                    <td class="px-2 sm:px-3 py-3">
-                      <div class="font-semibold text-app-text">${r.symbol}</div>
-                      <div class="text-xs text-app-muted truncate max-w-[140px] sm:max-w-none">${r.name}</div>
-                    </td>
-                    <td class="px-2 sm:px-3 py-3 text-app-muted hidden sm:table-cell">${r.sector}</td>
-                    <td class="px-2 sm:px-3 py-3 text-right text-app-text tabular-nums hidden sm:table-cell whitespace-nowrap">
-                      ${formatPrice(r.last_price)}
-                    </td>
-                    <${DrawdownCell} value=${r.today_change_pct} />
-                    <${DrawdownCell} value=${r.week_drawdown_pct} />
-                    <${DrawdownCell} value=${r.month_drawdown_pct} />
-                  </tr>
-                `
-              )}
-            </tbody>
-          </table>
-          ${visibleRows.length === 0 &&
-          html`<div class="p-6 text-center text-sm text-app-muted">
-            ${rows.length === 0 ? "Aucune donnée pour l'instant." : "Aucun résultat pour ce filtre."}
-          </div>`}
-        </div>
-      `}
       ${selected &&
       html`<${SymbolDetail}
         symbol=${selected}
@@ -521,7 +559,7 @@ function App() {
         onClose=${() => setSelected(null)}
       />`}
 
-      <footer class="mt-8 text-xs text-app-muted">
+      <footer class="mt-10 text-xs text-app-muted">
         <a href="./admin.html" class="underline hover:text-app-text transition-colors">Administration</a>
       </footer>
     </div>
