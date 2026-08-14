@@ -337,7 +337,7 @@ function Top10Panel({ rows, loading, metric, onMetricChange, direction, onToggle
         : rows.length === 0
         ? html`<p class="text-sm text-app-muted">Pas encore de données.</p>`
         : html`
-            <div class="no-scrollbar flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div class="no-scrollbar flex gap-3 overflow-x-auto pt-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               ${rows.map(
                 (r, i) => html`
                   <button
@@ -551,7 +551,7 @@ function App() {
         ${!showSkeleton &&
         !error &&
         html`
-          <div class="overflow-x-auto animate-fade-in">
+          <div class="animate-fade-in">
             <table class="w-full text-sm">
               <thead class="sticky z-10 bg-app-bg" style=${{ top: `${filterBarHeight}px` }}>
                 <tr class="border-b border-app-border">
