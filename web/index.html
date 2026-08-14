@@ -75,6 +75,15 @@
         scrollbar-color: #2c2c2e transparent;
         -webkit-tap-highlight-color: transparent;
       }
+      /* Carrousels de cartes (Top 10) : le défilement horizontal reste
+         actif (tactile, trackpad, glisser-déposer) mais sans exposer
+         de barre — comme un carrousel iOS natif. */
+      .no-scrollbar {
+        scrollbar-width: none;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
     </style>
   </head>
   <body class="bg-app-bg text-app-text min-h-screen">
