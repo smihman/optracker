@@ -32,3 +32,15 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python ingest.py --period "${{ github.event.inputs.period || '5d' }}"
+
+      # Short-list uniquement (~20 titres, pas les 500) : yfinance n'a pas
+      # d'appel groupé pour les options. Non-bloquant — si Yahoo boude les
+      # requêtes d'options ce jour-là, ça ne doit pas faire échouer
+      # l'ingestion des prix, qui est le cœur du pipeline.
+      - name: Fetch option theta (short-list)
+        working-directory: ingest
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python fetch_theta.py

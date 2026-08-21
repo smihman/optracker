@@ -52,7 +52,7 @@ avec le poste local.
 
 1. [supabase.com](https://supabase.com) → New project.
 2. Une fois créé : **SQL Editor** → coller et exécuter, **dans l'ordre**, le contenu de chaque
-   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0008).
+   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0009).
 3. **Project Settings → API** : noter l'**URL du projet** et la clé **`anon` `public`** (pour le
    front) et la clé **`service_role`** (pour l'ingestion — à garder secrète, jamais dans un
    fichier du repo).
@@ -147,6 +147,7 @@ python manual_test.py            # smoke test sur 5 symboles, ne touche pas Supa
 python refresh_tickers.py        # peuple/rafraîchit la table tickers
 python ingest.py                 # run quotidien normal (fenêtre 5 jours)
 python ingest.py --period 1y     # backfill d'un an (utilisable n'importe quel jour)
+python fetch_theta.py            # theta des ~20 titres les plus en "Creux" (nécessite metrics à jour)
 ```
 
 ---
@@ -160,6 +161,26 @@ python ingest.py --period 1y     # backfill d'un an (utilisable n'importe quel j
 
 Pas de purge manuelle ici : contrairement à l'ancien relevé intraday, `daily_closes` reste léger
 indéfiniment (~126k lignes/an), aucune gestion de rétention n'est nécessaire.
+
+---
+
+## Theta (options)
+
+En cliquant sur un titre, la fiche affiche le **theta estimé** d'un call ATM (strike le plus
+proche du cours) à l'échéance la plus proche de ~30-45 jours — combien l'option perd de valeur par
+jour, toutes choses égales par ailleurs.
+
+- **Calculé, pas fourni par Yahoo** : Yahoo Finance donne le prix et la volatilité implicite des
+  options, jamais les Greeks. Le theta est recalculé côté script via Black-Scholes
+  (`ingest/options_theta.py`), à partir de l'IV Yahoo — taux sans risque fixe (non récupéré en
+  direct) et dividendes ignorés (q=0). Approximatif, pas garanti identique à ce qu'affiche un
+  courtier.
+- **Uniquement une short-list d'environ 20 titres/jour** (les plus en "Creux"), pas les 500 :
+  `yfinance` n'a pas d'appel groupé pour les chaînes d'options (contrairement aux prix), un run à
+  l'échelle du S&P 500 ferait ~1000 appels/jour et casserait la règle "jamais un appel par
+  symbole" qui protège le pipeline du rate-limiting. Voir `ingest/fetch_theta.py`.
+- **C'est une donnée, pas un conseil** : le theta indique le coût de portage dans le temps, pas si
+  le titre va rebondir. Aucune recommandation d'achat n'est faite nulle part dans l'outil.
 
 ---
 
@@ -180,6 +201,9 @@ indéfiniment (~126k lignes/an), aucune gestion de rétention n'est nécessaire.
   moment-là plutôt que d'anticiper tous les cas.
 - **Quota Supabase (free tier, ~500 Mo)** : non-sujet avec `daily_closes` (~126k lignes/an, quelques
   Mo/an) — plus besoin de politique de rétention.
+- **Theta encore plus fragile que les prix** : les chaînes d'options Yahoo sont moins fiables que
+  l'endpoint prix. L'étape `fetch_theta.py` est non-bloquante dans le workflow
+  (`continue-on-error`) — si elle échoue un jour, l'ingestion des prix n'est pas affectée.
 
 ## Statut
 

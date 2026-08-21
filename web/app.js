@@ -177,11 +177,18 @@ function Top10Skeleton() {
   `;
 }
 
+function formatDateShort(isoDate) {
+  if (!isoDate) return "—";
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+}
+
 function SymbolDetail({ symbol, todayChangePct, onClose }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [theta, setTheta] = useState(undefined); // undefined = pas encore chargé, null = pas dispo
 
   useEffect(() => {
     let cancelled = false;
@@ -202,6 +209,22 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
       }
     }
     load();
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTheta(undefined);
+    supabase
+      .from("option_theta")
+      .select("expiration, strike, theta_per_day, implied_vol, option_volume, open_interest, updated_at")
+      .eq("symbol", symbol)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setTheta(data ?? null);
+      });
     return () => {
       cancelled = true;
     };
@@ -284,6 +307,38 @@ function SymbolDetail({ symbol, todayChangePct, onClose }) {
         ${!loading &&
         points.length > 0 &&
         html`<div class="relative h-56 sm:h-64"><canvas ref=${canvasRef}></canvas></div>`}
+        ${theta &&
+        html`
+          <div class="mt-5 pt-5 border-t border-app-border">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs font-semibold text-app-muted uppercase tracking-wide">Call ATM ~30-45j (estimation)</h3>
+              <span class="text-xs text-app-muted whitespace-nowrap"
+                >éch. ${formatDateShort(theta.expiration)} · strike ${formatPrice(theta.strike)}</span
+              >
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-2xl font-bold tabular-nums ${theta.theta_per_day < 0 ? "text-neg" : "text-app-text"}">
+                ${theta.theta_per_day != null ? `${theta.theta_per_day.toFixed(3)} $/j` : "—"}
+              </span>
+              <span class="text-xs text-app-muted">theta</span>
+            </div>
+            <div class="text-xs text-app-muted mt-1">
+              IV ${theta.implied_vol != null ? `${(theta.implied_vol * 100).toFixed(0)}%` : "—"} · vol
+              ${theta.option_volume ?? "—"} · open int. ${theta.open_interest ?? "—"}
+            </div>
+            <p class="text-xs text-app-muted mt-3 italic">
+              Estimation Black-Scholes à partir de la volatilité implicite Yahoo — approximatif (taux sans risque
+              fixe, dividendes ignorés), pas un conseil d'achat.
+            </p>
+          </div>
+        `}
+        ${theta === null &&
+        html`
+          <p class="mt-5 pt-5 border-t border-app-border text-xs text-app-muted">
+            Pas de theta calculé pour ce titre — disponible seulement pour la vingtaine de titres les plus en
+            "Creux" du jour.
+          </p>
+        `}
       </div>
     </div>
   `;
