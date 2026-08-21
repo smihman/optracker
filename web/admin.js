@@ -31,6 +31,32 @@ function SearchIcon({ className }) {
   `;
 }
 
+const NAV_ITEMS = [
+  { href: "./index.html", label: "Dashboard" },
+  { href: "./portfolios.html", label: "Portefeuilles" },
+  { href: "./admin.html", label: "Administration" },
+];
+
+function NavPills({ current }) {
+  return html`
+    <nav class="flex items-center gap-1 p-1 bg-app-surface border border-app-border rounded-full">
+      ${NAV_ITEMS.map(
+        (item) => html`
+          <a
+            href=${item.href}
+            class=${"px-3 py-1.5 rounded-full text-xs sm:text-sm transition-all whitespace-nowrap " +
+            (item.label === current
+              ? "bg-app-text text-app-bg font-medium"
+              : "text-app-muted hover:text-app-text")}
+          >
+            ${item.label}
+          </a>
+        `
+      )}
+    </nav>
+  `;
+}
+
 function LoginForm({ onLoggedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -230,8 +256,8 @@ function AdminApp() {
           </div>
           <h1 class="text-xl font-bold text-app-text">Administration</h1>
         </div>
-        <div class="flex items-center gap-4 text-sm">
-          <a href="./index.html" class="underline text-app-muted hover:text-app-text transition-colors">← Dashboard</a>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+          <${NavPills} current="Administration" />
           <button class="text-app-muted hover:text-app-text active:scale-95 transition-all" onClick=${logout}>
             Déconnexion
           </button>

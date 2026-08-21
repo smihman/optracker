@@ -1,0 +1,31 @@
+name: Fetch investor portfolios (13F)
+
+on:
+  schedule:
+    # Hebdomadaire (lundi 8h UTC) : les 13F sont trimestriels, un cron
+    # quotidien n'apporterait rien. Idempotent de toute façon (unique
+    # sur investor_cik+period_of_report), donc sans risque si relancé
+    # manuellement entre deux runs planifiés.
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+jobs:
+  fetch-portfolios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r ingest/requirements.txt
+
+      - name: Fetch 13F filings
+        working-directory: ingest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python fetch_portfolios.py

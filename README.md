@@ -52,7 +52,7 @@ avec le poste local.
 
 1. [supabase.com](https://supabase.com) → New project.
 2. Une fois créé : **SQL Editor** → coller et exécuter, **dans l'ordre**, le contenu de chaque
-   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0009).
+   fichier de [`supabase/migrations/`](supabase/migrations/) (0001 à 0010).
 3. **Project Settings → API** : noter l'**URL du projet** et la clé **`anon` `public`** (pour le
    front) et la clé **`service_role`** (pour l'ingestion — à garder secrète, jamais dans un
    fichier du repo).
@@ -184,6 +184,38 @@ jour, toutes choses égales par ailleurs.
 
 ---
 
+## Portefeuilles suivis (13F)
+
+`web/portfolios.html` affiche les mouvements trimestriels d'une liste choisie d'investisseurs/fonds
+publics — pour l'instant Warren Buffett / Berkshire Hathaway (voir [`0010_investor_portfolios.sql`](supabase/migrations/0010_investor_portfolios.sql)).
+
+- **Source : dépôts SEC 13F-HR (EDGAR)**, pas un agrégateur tiers — gratuit, officiel, sans clé API.
+  Un 13F liste les positions actions d'un fond gérant plus de 100M$, mais est **trimestriel et publié
+  jusqu'à 45 jours après la clôture du trimestre** : ce n'est jamais un signal temps réel, contrairement
+  au reste du dashboard. `ingest/edgar_client.py` s'en charge (liste des dépôts via l'API JSON
+  `data.sec.gov/submissions`, puis parsing XML du tableau d'informations de chaque dépôt).
+- **Rapprochement entre deux trimestres par CUSIP**, pas par symbole (un CUSIP identifie un titre de
+  façon stable, un symbole peut changer) : la fonction SQL `portfolio_moves()` calcule, à la lecture,
+  les positions nouvelles / renforcées / réduites / sorties entre les deux derniers dépôts d'un
+  investisseur.
+- **Correspondance avec un symbole S&P 500 best-effort** (`ingest/fetch_portfolios.py::normalize_name`) :
+  les 13F rapportent des noms d'émetteur bruts ("APPLE INC", parfois abrégés) sans CUSIP-vers-symbole
+  fiable et gratuit disponible. Beaucoup de lignes n'auront donc pas de symbole associé — le nom brut du
+  dépôt est toujours affiché, ce n'est jamais bloquant.
+- **Cadence hebdomadaire** (`.github/workflows/portfolios.yml`, lundi), pas quotidienne : inutile d'aller
+  plus vite qu'un dépôt trimestriel. Idempotent (unique sur investisseur + trimestre), donc sans risque
+  d'être relancé manuellement.
+- **Ajouter un investisseur à suivre** : trouver son CIK sur
+  [SEC EDGAR company search](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany), puis dans le
+  SQL Editor Supabase :
+  ```sql
+  insert into investors (cik, name, slug) values
+    ('0000XXXXXXX', 'Nom affiché', 'slug-unique');
+  ```
+  Le prochain run du workflow (ou un `workflow_dispatch` manuel) ingère son historique 13F disponible.
+
+---
+
 ## Limites connues
 
 - **Cron best-effort** : GitHub Actions ne garantit pas le timing exact des workflows planifiés
@@ -204,6 +236,11 @@ jour, toutes choses égales par ailleurs.
 - **Theta encore plus fragile que les prix** : les chaînes d'options Yahoo sont moins fiables que
   l'endpoint prix. L'étape `fetch_theta.py` est non-bloquante dans le workflow
   (`continue-on-error`) — si elle échoue un jour, l'ingestion des prix n'est pas affectée.
+- **13F pas temps réel, et structure XML pas garantie stable** : au-delà du délai de 45 jours propre
+  au 13F, le tableau d'informations est soumis par chaque filer et sa structure exacte (nom de fichier,
+  balises optionnelles) varie légèrement d'un fond à l'autre — `edgar_client.fetch_holdings` peut
+  échouer sur un fond mal reconnu ; c'est loggé et sauté, jamais bloquant pour les autres investisseurs
+  suivis.
 
 ## Statut
 

@@ -84,6 +84,32 @@ function SearchIcon({ className }) {
   `;
 }
 
+const NAV_ITEMS = [
+  { href: "./index.html", label: "Dashboard" },
+  { href: "./portfolios.html", label: "Portefeuilles" },
+  { href: "./admin.html", label: "Administration" },
+];
+
+function NavPills({ current }) {
+  return html`
+    <nav class="flex items-center gap-1 p-1 bg-app-surface border border-app-border rounded-full">
+      ${NAV_ITEMS.map(
+        (item) => html`
+          <a
+            href=${item.href}
+            class=${"px-3 py-1.5 rounded-full text-xs sm:text-sm transition-all whitespace-nowrap " +
+            (item.label === current
+              ? "bg-app-text text-app-bg font-medium"
+              : "text-app-muted hover:text-app-text")}
+          >
+            ${item.label}
+          </a>
+        `
+      )}
+    </nav>
+  `;
+}
+
 function ChevronIcon({ className }) {
   return html`
     <svg class=${className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -553,16 +579,19 @@ function App() {
             <p class="text-sm text-app-muted">Vs ouverture, semaine et mois — outil de recherche perso.</p>
           </div>
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-          <span class="text-app-muted whitespace-nowrap">Clôture du ${formatCloseDate(lastCloseDate)}</span>
-          <button
-            class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-app-border text-app-text hover:bg-app-surface active:scale-95 transition-all duration-150 whitespace-nowrap disabled:opacity-60"
-            onClick=${load}
-            disabled=${loading}
-          >
-            ${loading && html`<${SpinnerIcon} className="w-3.5 h-3.5" />`}
-            Rafraîchir
-          </button>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <${NavPills} current="Dashboard" />
+          <div class="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+            <span class="text-app-muted whitespace-nowrap">Clôture du ${formatCloseDate(lastCloseDate)}</span>
+            <button
+              class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-app-border text-app-text hover:bg-app-surface active:scale-95 transition-all duration-150 whitespace-nowrap disabled:opacity-60"
+              onClick=${load}
+              disabled=${loading}
+            >
+              ${loading && html`<${SpinnerIcon} className="w-3.5 h-3.5" />`}
+              Rafraîchir
+            </button>
+          </div>
         </div>
       </header>
 
@@ -688,9 +717,6 @@ function App() {
         onClose=${() => setSelected(null)}
       />`}
 
-      <footer class="mt-10 text-xs text-app-muted">
-        <a href="./admin.html" class="underline hover:text-app-text transition-colors">Administration</a>
-      </footer>
     </div>
   `;
 }
